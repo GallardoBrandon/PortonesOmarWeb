@@ -1,6 +1,55 @@
 // Script para manejar API REST, admin panel e imágenes
 const API_URL = '/api';
 
+// Registrar el service worker para que el sitio se pueda instalar como PWA
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('/sw.js').catch((err) => console.error('Error registrando service worker:', err));
+  });
+}
+
+// Captura el evento de instalación de PWA (Chrome/Edge/Android) para poder
+// disparar el prompt nativo desde nuestro propio botón "Instalar ahora"
+let deferredInstallPrompt = null;
+window.addEventListener('beforeinstallprompt', (e) => {
+  e.preventDefault();
+  deferredInstallPrompt = e;
+  const btn = document.getElementById('installNowBtn');
+  if (btn) btn.style.display = 'inline-block';
+});
+window.addEventListener('appinstalled', () => {
+  deferredInstallPrompt = null;
+  const msg = document.getElementById('installStatusMsg');
+  if (msg) msg.textContent = '✅ ¡App instalada correctamente!';
+});
+
+// Página instalar.html: conecta el botón con el prompt nativo o muestra aviso
+function initInstallPage() {
+  const btn = document.getElementById('installNowBtn');
+  if (!btn) return;
+
+  const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const msg = document.getElementById('installStatusMsg');
+  if (isStandalone) {
+    if (msg) msg.textContent = 'Ya tienes la app instalada en este dispositivo.';
+    return;
+  }
+
+  if (deferredInstallPrompt) btn.style.display = 'inline-block';
+
+  btn.addEventListener('click', async () => {
+    if (!deferredInstallPrompt) {
+      if (msg) msg.textContent = 'Tu navegador no soporta instalación automática: sigue los pasos manuales de abajo.';
+      return;
+    }
+    deferredInstallPrompt.prompt();
+    const { outcome } = await deferredInstallPrompt.userChoice;
+    if (msg) msg.textContent = outcome === 'accepted' ? '✅ ¡Instalando la app!' : 'Instalación cancelada.';
+    deferredInstallPrompt = null;
+    btn.style.display = 'none';
+  });
+}
+
 // Cargar las vistas HTML dinámicamente
 async function loadViews() {
   const app = document.getElementById('app');
@@ -28,6 +77,17 @@ async function loadViews() {
 // Obtener token del localStorage
 function getAuthToken() {
   return localStorage.getItem('admin_token');
+}
+
+// Convierte un File en un data URL base64 (resuelve null si no hay archivo)
+function readFileAsDataURL(file) {
+  if (!file) return Promise.resolve(null);
+  return new Promise((resolve) => {
+    const reader = new FileReader();
+    reader.onload = (e) => resolve(e.target.result);
+    reader.onerror = () => resolve(null);
+    reader.readAsDataURL(file);
+  });
 }
 
 // Guardar token en localStorage
@@ -139,6 +199,19 @@ function loadPublicGallery(container, limit) {
 }
 
 // ===== PRODUCTOS PÚBLICOS =====
+
+// Devuelve la imagen real del producto, o null si no tiene foto cargada
+function getProductImageSrc(product) {
+  return product.image_data || null;
+}
+
+// HTML de la imagen del producto o un placeholder simple si no tiene foto
+function renderProductImageHtml(product) {
+  const src = getProductImageSrc(product);
+  if (src) return `<img src="${src}" alt="${product.name}">`;
+  return `<div class="no-image-placeholder">Sin imagen disponible</div>`;
+}
+
 function renderProductCards(container, products) {
   const grid = typeof container === 'string' ? document.getElementById(container) : container;
   if (!grid) return;
@@ -151,11 +224,11 @@ function renderProductCards(container, products) {
   }
 
   products.forEach(product => {
-    const card = document.createElement('article');
+    const card = document.createElement('a');
     card.className = 'card';
-    const imgSrc = product.image_data || `https://via.placeholder.com/400x300?text=${encodeURIComponent(product.name)}`;
+    card.href = `producto.html?id=${product.id}`;
     card.innerHTML = `
-      <img src="${imgSrc}" alt="${product.name}">
+      ${renderProductImageHtml(product)}
       <div class="card-body">
         <h4>${product.name}</h4>
         <p class="price">$${Number(product.price).toFixed(2)}</p>
@@ -164,6 +237,280 @@ function renderProductCards(container, products) {
     `;
     grid.appendChild(card);
   });
+}
+
+// ===== CARRITO DE COMPRAS =====
+const CART_STORAGE_KEY = 'shopping_cart';
+
+function getCart() {
+  try {
+    return JSON.parse(localStorage.getItem(CART_STORAGE_KEY)) || [];
+  } catch (e) {
+    return [];
+  }
+}
+
+function saveCart(items) {
+  localStorage.setItem(CART_STORAGE_KEY, JSON.stringify(items));
+  updateCartBadge();
+}
+
+function addToCart(product, quantity, variant) {
+  const items = getCart();
+  const existing = items.find(i => i.id === product.id && i.variant === (variant || null));
+  if (existing) {
+    existing.quantity += quantity;
+  } else {
+    items.push({ id: product.id, name: product.name, price: Number(product.price), variant: variant || null, quantity });
+  }
+  saveCart(items);
+}
+
+function removeFromCart(index) {
+  const items = getCart();
+  items.splice(index, 1);
+  saveCart(items);
+}
+
+function updateCartItemQuantity(index, quantity) {
+  const items = getCart();
+  if (items[index]) {
+    items[index].quantity = Math.max(1, quantity);
+    saveCart(items);
+  }
+}
+
+function cartTotal(items) {
+  return (items || getCart()).reduce((sum, i) => sum + i.price * i.quantity, 0);
+}
+
+function cartItemCount(items) {
+  return (items || getCart()).reduce((sum, i) => sum + i.quantity, 0);
+}
+
+function updateCartBadge() {
+  const badge = document.getElementById('cartBadge');
+  if (!badge) return;
+  const count = cartItemCount();
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+}
+
+// Construye el mensaje de WhatsApp con todos los productos del carrito
+function buildCartWhatsAppUrl() {
+  const whatsappNumber = '526671034487';
+  const items = getCart();
+  const lines = ['🛒 *Quiero comprar estos productos*', ''];
+  items.forEach(item => {
+    const subtotal = (item.price * item.quantity).toFixed(2);
+    let line = `📦 ${item.name}`;
+    if (item.variant) line += ` (${item.variant})`;
+    line += ` x${item.quantity} — $${subtotal}`;
+    lines.push(line);
+  });
+  lines.push('', `💰 Total: $${cartTotal(items).toFixed(2)}`);
+  return `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(lines.join('\n'))}`;
+}
+
+function renderCartModal() {
+  const body = document.getElementById('cartModalBody');
+  const footer = document.getElementById('cartModalFooter');
+  if (!body) return;
+  const items = getCart();
+
+  if (items.length === 0) {
+    body.innerHTML = '<p>Tu carrito está vacío.</p>';
+    if (footer) footer.style.display = 'none';
+    return;
+  }
+
+  if (footer) footer.style.display = 'block';
+
+  body.innerHTML = items.map((item, index) => `
+    <div class="cart-item">
+      <div class="cart-item-info">
+        <span class="cart-item-name">${item.name}${item.variant ? ` (${item.variant})` : ''}</span>
+        <span class="cart-item-price">$${item.price.toFixed(2)} c/u</span>
+      </div>
+      <div class="cart-item-controls">
+        <button type="button" class="cart-qty-minus" data-index="${index}" aria-label="Restar">-</button>
+        <input type="number" class="cart-qty-input" data-index="${index}" value="${item.quantity}" min="1">
+        <button type="button" class="cart-qty-plus" data-index="${index}" aria-label="Sumar">+</button>
+      </div>
+      <span class="cart-item-subtotal">$${(item.price * item.quantity).toFixed(2)}</span>
+      <button type="button" class="cart-item-remove" data-index="${index}" aria-label="Eliminar">✕</button>
+    </div>
+  `).join('');
+
+  document.getElementById('cartModalTotal').textContent = `$${cartTotal(items).toFixed(2)}`;
+  document.getElementById('cartBuyButton').href = buildCartWhatsAppUrl();
+
+  body.querySelectorAll('.cart-qty-minus').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.index);
+      updateCartItemQuantity(idx, Math.max(1, getCart()[idx].quantity - 1));
+      renderCartModal();
+    });
+  });
+  body.querySelectorAll('.cart-qty-plus').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const idx = Number(btn.dataset.index);
+      updateCartItemQuantity(idx, getCart()[idx].quantity + 1);
+      renderCartModal();
+    });
+  });
+  body.querySelectorAll('.cart-qty-input').forEach(input => {
+    input.addEventListener('change', () => {
+      updateCartItemQuantity(Number(input.dataset.index), parseInt(input.value, 10) || 1);
+      renderCartModal();
+    });
+  });
+  body.querySelectorAll('.cart-item-remove').forEach(btn => {
+    btn.addEventListener('click', () => {
+      removeFromCart(Number(btn.dataset.index));
+      renderCartModal();
+    });
+  });
+}
+
+// Inserta el botón flotante del carrito y su modal (funciona en cualquier página)
+function initCartWidget() {
+  if (document.getElementById('cartWidget')) return;
+
+  const widget = document.createElement('div');
+  widget.id = 'cartWidget';
+  widget.innerHTML = `
+    <button type="button" id="cartToggleBtn" class="cart-fab" aria-label="Ver carrito">
+      🛒<span id="cartBadge" class="cart-badge">0</span>
+    </button>
+    <div id="cartModal" class="modal" style="display:none;">
+      <div class="modal-content cart-modal-content">
+        <span class="close" id="cartModalClose">&times;</span>
+        <h2>Tu carrito</h2>
+        <div id="cartModalBody"></div>
+        <div id="cartModalFooter" class="cart-modal-footer">
+          <p class="cart-modal-total">Total: <strong id="cartModalTotal">$0.00</strong></p>
+          <div class="cart-modal-actions">
+            <a id="cartBuyButton" class="btn btn-primary" target="_blank" rel="noopener">Comprar todo por WhatsApp</a>
+            <button type="button" id="cartClearBtn" class="btn-text-danger">Vaciar carrito</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(widget);
+
+  const modal = document.getElementById('cartModal');
+  document.getElementById('cartToggleBtn').addEventListener('click', () => {
+    renderCartModal();
+    modal.style.display = 'block';
+  });
+  document.getElementById('cartModalClose').addEventListener('click', () => {
+    modal.style.display = 'none';
+  });
+  modal.addEventListener('click', (e) => {
+    if (e.target === modal) modal.style.display = 'none';
+  });
+  document.getElementById('cartClearBtn').addEventListener('click', () => {
+    saveCart([]);
+    renderCartModal();
+  });
+
+  updateCartBadge();
+}
+
+// Página de detalle de producto (producto.html?id=ID)
+function loadProductDetail(container) {
+  const wrap = typeof container === 'string' ? document.getElementById(container) : container;
+  if (!wrap) return;
+
+  const params = new URLSearchParams(window.location.search);
+  const id = params.get('id');
+
+  if (!id) {
+    wrap.innerHTML = '<p style="color:red;">Producto no especificado.</p>';
+    return;
+  }
+
+  fetch(`${API_URL}/products`)
+    .then(res => res.json())
+    .then(products => {
+      const product = (products || []).find(p => String(p.id) === String(id));
+      if (!product) {
+        wrap.innerHTML = '<p style="color:red;">Producto no encontrado.</p>';
+        return;
+      }
+
+      document.title = `${product.name} - Portones Eléctricos Omar`;
+
+      const variants = (product.variants || '').split(',').map(v => v.trim()).filter(Boolean);
+      const variantHtml = variants.length ? `
+          <div class="quantity-selector">
+            <label for="productVariant">Opción:</label>
+            <select id="productVariant">
+              ${variants.map(v => `<option value="${v}">${v}</option>`).join('')}
+            </select>
+          </div>` : '';
+
+      wrap.innerHTML = `
+        <div class="product-detail-image">
+          ${renderProductImageHtml(product)}
+        </div>
+        <div class="product-detail-info">
+          <h2>${product.name}</h2>
+          <p class="product-detail-description">${product.description || 'Sin descripción disponible.'}</p>
+          <p class="product-detail-unit-price">Precio por pieza: <strong>$${Number(product.price).toFixed(2)}</strong></p>
+${variantHtml}
+          <div class="quantity-selector">
+            <label for="productQuantity">Cantidad de piezas:</label>
+            <div class="quantity-controls">
+              <button type="button" id="qtyMinus" aria-label="Restar">-</button>
+              <input type="number" id="productQuantity" value="1" min="1" step="1">
+              <button type="button" id="qtyPlus" aria-label="Sumar">+</button>
+            </div>
+          </div>
+
+          <p class="product-detail-total">Total: <strong id="productTotalPrice">$${Number(product.price).toFixed(2)}</strong></p>
+
+          <div class="product-buy-actions">
+            <button type="button" id="addToCartBtn" class="btn btn-primary buy-btn">Agregar al carrito</button>
+          </div>
+        </div>
+      `;
+
+      const qtyInput = wrap.querySelector('#productQuantity');
+      const totalEl = wrap.querySelector('#productTotalPrice');
+      const variantSelect = wrap.querySelector('#productVariant');
+
+      function updateTotal() {
+        let qty = parseInt(qtyInput.value, 10);
+        if (!qty || qty < 1) qty = 1;
+        qtyInput.value = qty;
+        totalEl.textContent = `$${(Number(product.price) * qty).toFixed(2)}`;
+      }
+
+      wrap.querySelector('#addToCartBtn').addEventListener('click', () => {
+        const qty = parseInt(qtyInput.value, 10) || 1;
+        addToCart(product, qty, variantSelect ? variantSelect.value : null);
+        showToast('Producto agregado al carrito', 'success');
+      });
+
+      wrap.querySelector('#qtyMinus').addEventListener('click', () => {
+        qtyInput.value = Math.max(1, (parseInt(qtyInput.value, 10) || 1) - 1);
+        updateTotal();
+      });
+      wrap.querySelector('#qtyPlus').addEventListener('click', () => {
+        qtyInput.value = (parseInt(qtyInput.value, 10) || 1) + 1;
+        updateTotal();
+      });
+      qtyInput.addEventListener('input', updateTotal);
+
+      updateTotal();
+    })
+    .catch(err => {
+      wrap.innerHTML = '<p style="color:red;">Error al cargar el producto</p>';
+      console.error('Error:', err);
+    });
 }
 
 // Productos destacados (más vendidos) para la página de inicio
@@ -319,7 +666,7 @@ function initializeApp() {
       }
     })
     .catch(err => {
-      showToast('Error al autenticar', 'error');
+      showToast('No se pudo conectar con el servidor para autenticar.', 'error');
       console.error('Error:', err);
     });
   });
@@ -389,6 +736,10 @@ function initializeApp() {
                 <input type="file" accept="image/*" class="product-image" data-id="${product.id}">
                 <div class="product-image-preview" data-id="${product.id}" style="margin-top:10px;"></div>
               </div>
+              <div class="form-group">
+                <label>Opciones (separadas por coma, ej. 1,2,3,4,5 o Larga,Corta):</label>
+                <input type="text" class="product-variants" value="${product.variants || ''}" data-id="${product.id}" placeholder="Opcional">
+              </div>
               <div class="form-group form-group-checkbox">
                 <label>
                   <input type="checkbox" class="product-featured" data-id="${product.id}" ${product.featured ? 'checked' : ''}>
@@ -436,6 +787,7 @@ function initializeApp() {
             const price = parseFloat(form.querySelector('.product-price').value);
             const description = form.querySelector('.product-description').value.trim();
             const imageInput = form.querySelector('.product-image');
+            const variants = form.querySelector('.product-variants').value.trim();
             const featured = form.querySelector('.product-featured').checked;
 
             if(!name || isNaN(price)){
@@ -443,17 +795,9 @@ function initializeApp() {
               return;
             }
 
-            // Si hay imagen nueva, convertir a base64
-            if(imageInput.files[0]){
-              const reader = new FileReader();
-              reader.onload = function(e){
-                updateProductData(productId, name, price, description, e.target.result, featured);
-              };
-              reader.readAsDataURL(imageInput.files[0]);
-            } else {
-              // Actualizar sin cambiar imagen
-              updateProductData(productId, name, price, description, null, featured);
-            }
+            readFileAsDataURL(imageInput.files[0]).then(imageData => {
+              updateProductData(productId, name, price, description, imageData, variants, featured);
+            });
           });
         });
 
@@ -514,6 +858,10 @@ function initializeApp() {
             <input type="file" accept="image/*" class="product-image">
             <div class="product-image-preview" style="margin-top:10px;"></div>
           </div>
+          <div class="form-group">
+            <label>Opciones (separadas por coma, ej. 1,2,3,4,5 o Larga,Corta):</label>
+            <input type="text" class="product-variants" placeholder="Opcional">
+          </div>
           <div class="form-group form-group-checkbox">
             <label>
               <input type="checkbox" class="product-featured" checked>
@@ -549,6 +897,7 @@ function initializeApp() {
         const name = newItem.querySelector('.product-name').value.trim();
         const price = parseFloat(newItem.querySelector('.product-price').value);
         const description = newItem.querySelector('.product-description').value.trim();
+        const variants = newItem.querySelector('.product-variants').value.trim();
         const featured = newItem.querySelector('.product-featured').checked;
 
         if(!name || isNaN(price)){
@@ -556,10 +905,10 @@ function initializeApp() {
           return;
         }
 
-        const createProduct = (imageData) => {
+        readFileAsDataURL(imageInput.files[0]).then(imageData => {
           fetchWithAuth(`${API_URL}/products`, {
             method: 'POST',
-            body: JSON.stringify({ name, price, description, imageData, featured })
+            body: JSON.stringify({ name, price, description, imageData, variants, featured })
           })
           .then(res => res.json())
           .then(data => {
@@ -574,21 +923,13 @@ function initializeApp() {
             console.error('Error:', err);
             showToast('Ocurrió un error al crear el producto', 'error');
           });
-        };
-
-        if(imageInput.files[0]){
-          const reader = new FileReader();
-          reader.onload = function(e){ createProduct(e.target.result); };
-          reader.readAsDataURL(imageInput.files[0]);
-        } else {
-          createProduct(null);
-        }
+        });
       });
     });
   }
 
-  function updateProductData(id, name, price, description, imageData, featured){
-    const body = { name, price, description, featured };
+  function updateProductData(id, name, price, description, imageData, variants, featured){
+    const body = { name, price, description, variants, featured };
     if(imageData) body.imageData = imageData;
 
     fetchWithAuth(`${API_URL}/products/${id}`, {
@@ -743,12 +1084,18 @@ function initStaticPage() {
   const allProductsGrid = document.getElementById('allProductsGrid');
   if (allProductsGrid) loadAllProducts(allProductsGrid);
 
+  const productDetailWrap = document.getElementById('productDetail');
+  if (productDetailWrap) loadProductDetail(productDetailWrap);
+
   const fullGalleryGrid = document.getElementById('fullGalleryGrid');
   if (fullGalleryGrid) loadPublicGallery(fullGalleryGrid);
+
+  initInstallPage();
 }
 
 // Iniciar aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function(){
+  initCartWidget();
   if (document.getElementById('app')) {
     loadViews();
   } else {

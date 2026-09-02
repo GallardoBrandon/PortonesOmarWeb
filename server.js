@@ -1,3 +1,5 @@
+require('dotenv').config();
+
 const express = require('express');
 const cors = require('cors');
 const bodyParser = require('body-parser');
@@ -111,13 +113,13 @@ app.get('/api/products', (req, res) => {
 
 app.put('/api/products/:id', verifyToken, (req, res) => {
   const { id } = req.params;
-  const { name, price, description, imageData, featured } = req.body;
+  const { name, price, description, imageData, variants, featured } = req.body;
 
   if (!name || price === undefined) {
     return res.status(400).json({ error: 'Campos requeridos: name, price' });
   }
 
-  db.updateProduct(id, name, price, description || '', imageData || null, featured, (err) => {
+  db.updateProduct(id, name, price, description || '', imageData || null, null, null, variants || null, featured, (err) => {
     if (err) {
       res.status(500).json({ error: err.message });
     } else {
@@ -127,13 +129,13 @@ app.put('/api/products/:id', verifyToken, (req, res) => {
 });
 
 app.post('/api/products', verifyToken, (req, res) => {
-  const { name, price, description, imageData, featured } = req.body;
+  const { name, price, description, imageData, variants, featured } = req.body;
 
   if (!name || price === undefined) {
     return res.status(400).json({ error: 'Campos requeridos: name, price' });
   }
 
-  db.addProduct(name, price, description || '', imageData || null, featured, (err, result) => {
+  db.addProduct(name, price, description || '', imageData || null, null, null, variants || null, featured, (err, result) => {
     if (err) {
       res.status(500).json({ error: err.message });
     } else {
@@ -214,12 +216,17 @@ app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'index.html'));
 });
 
-// Iniciar servidor
-app.listen(PORT, () => {
-  console.log(`
+// Iniciar servidor después de inicializar la base de datos.
+db.ready.then(() => {
+  app.listen(PORT, () => {
+    console.log(`
 ╔══════════════════════════════════════╗
 ║  Servidor ejecutándose en:          ║
 ║  http://localhost:${PORT}            ║
 ╚══════════════════════════════════════╝
   `);
+  });
+}).catch(error => {
+  console.error('No fue posible inicializar la base de datos:', error.message);
+  process.exit(1);
 });

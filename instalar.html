@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Galería de Instalaciones - Portones Eléctricos Omar</title>
+  <title>Instalar la app - Portones Eléctricos Omar</title>
   <link rel="manifest" href="/manifest.json">
   <meta name="theme-color" content="#0f2540">
   <link rel="apple-touch-icon" href="/logo.png">
@@ -34,16 +34,48 @@
 
   <section class="hero hero-sub">
     <div class="container hero-inner">
-      <h2>Galería de instalaciones</h2>
-      <p>Todos los trabajos que hemos realizado para nuestros clientes, como referencia de nuestra calidad.</p>
+      <h2>Instala la app en tu celular</h2>
+      <p>Ten acceso directo a nuestro catálogo desde la pantalla de inicio, sin necesidad de abrir el navegador.</p>
     </div>
   </section>
 
   <main class="container">
-    <section class="gallery">
-      <div class="grid" id="fullGalleryGrid">
-        <p>Cargando galería...</p>
+    <section class="install-section">
+      <div class="install-cta">
+        <button type="button" id="installNowBtn" class="btn btn-primary install-btn" style="display:none;">📲 Instalar ahora</button>
+        <p id="installStatusMsg" class="install-status"></p>
       </div>
+
+      <div class="install-steps">
+        <div class="install-card">
+          <h3>📱 Android (Chrome)</h3>
+          <ol>
+            <li>Toca el botón "Instalar ahora" de arriba, o abre el menú <strong>⋮</strong> en la esquina superior derecha.</li>
+            <li>Selecciona <strong>"Instalar aplicación"</strong> o <strong>"Agregar a pantalla de inicio"</strong>.</li>
+            <li>Confirma tocando <strong>"Instalar"</strong>.</li>
+          </ol>
+        </div>
+
+        <div class="install-card">
+          <h3>🍎 iPhone / iPad (Safari)</h3>
+          <ol>
+            <li>Toca el botón de compartir <strong>⬆️</strong> en la barra inferior (o superior en iPad).</li>
+            <li>Desplázate y selecciona <strong>"Agregar a pantalla de inicio"</strong>.</li>
+            <li>Toca <strong>"Agregar"</strong> en la esquina superior derecha.</li>
+          </ol>
+        </div>
+
+        <div class="install-card">
+          <h3>💻 Computadora (Chrome / Edge)</h3>
+          <ol>
+            <li>Busca el ícono de instalación <strong>⊕</strong> en la barra de direcciones (a la derecha).</li>
+            <li>Si no lo ves, abre el menú <strong>⋮</strong> y selecciona <strong>"Instalar Portones Eléctricos Omar"</strong>.</li>
+            <li>Confirma en la ventana que aparece.</li>
+          </ol>
+        </div>
+      </div>
+
+      <p class="install-note">Una vez instalada, la app abre en pantalla completa con su propio ícono, igual que cualquier otra aplicación de tu celular o computadora.</p>
     </section>
   </main>
 
@@ -59,7 +91,6 @@
       </div>
       <div class="footer-bottom">
         <p>&copy; <span id="year"></span> Portones Eléctricos Omar. Todos los derechos reservados.</p>
-        <a href="instalar.html" class="install-link">📲 Instalar App</a>
         <a href="index.html" class="admin-btn">Acceso Admin</a>
       </div>
     </div>
