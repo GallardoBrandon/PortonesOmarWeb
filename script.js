@@ -4,7 +4,7 @@ const API_URL = '/api';
 // Registrar el service worker para que el sitio se pueda instalar como PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=3').catch((err) => console.error('Error registrando service worker:', err));
+    navigator.serviceWorker.register('/sw.js?v=4').catch((err) => console.error('Error registrando service worker:', err));
   });
 }
 
@@ -35,6 +35,14 @@ function initInstallPage() {
     return;
   }
 
+  const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+  const isDesktop = !/android|iphone|ipad|ipod|mobile/i.test(navigator.userAgent);
+  if (isIOS && msg) {
+    msg.textContent = 'En Safari: toca Compartir y después "Agregar a pantalla de inicio".';
+  } else if (isDesktop && msg && !deferredInstallPrompt) {
+    msg.textContent = 'En Chrome o Edge: abre el menú del navegador y elige "Instalar Portones Eléctricos Omar".';
+  }
+
   if (deferredInstallPrompt) btn.style.display = 'inline-block';
 
   btn.addEventListener('click', async () => {
@@ -56,11 +64,11 @@ async function loadViews() {
   
   try {
     // Cargar vista cliente
-    const clientRes = await fetch('cliente.html?v=3');
+    const clientRes = await fetch('cliente.html?v=4');
     const clientHTML = await clientRes.text();
     
     // Cargar vista admin
-    const adminRes = await fetch('admin.html?v=3');
+    const adminRes = await fetch('admin.html?v=4');
     const adminHTML = await adminRes.text();
     
     // Insertar ambas vistas en el contenedor app
@@ -300,7 +308,18 @@ function updateCartBadge() {
 function buildCartWhatsAppUrl() {
   const whatsappNumber = '526671034487';
   const items = getCart();
+  const customer = {
+    name: document.getElementById('checkoutName')?.value.trim() || '',
+    phone: document.getElementById('checkoutPhone')?.value.trim() || '',
+    address: document.getElementById('checkoutAddress')?.value.trim() || '',
+    city: document.getElementById('checkoutCity')?.value.trim() || '',
+    postalCode: document.getElementById('checkoutPostalCode')?.value.trim() || ''
+  };
   const lines = ['🛒 *Quiero comprar estos productos*', ''];
+  if (customer.name) lines.push(`👤 Nombre: ${customer.name}`);
+  if (customer.phone) lines.push(`📱 Teléfono: ${customer.phone}`);
+  if (customer.address) lines.push(`📍 Dirección: ${customer.address}, ${customer.city}, C.P. ${customer.postalCode}`);
+  lines.push('');
   items.forEach(item => {
     const subtotal = (item.price * item.quantity).toFixed(2);
     let line = `📦 ${item.name}`;
@@ -344,6 +363,39 @@ function renderCartModal() {
 
   document.getElementById('cartModalTotal').textContent = `$${cartTotal(items).toFixed(2)}`;
   document.getElementById('cartBuyButton').href = buildCartWhatsAppUrl();
+
+  const checkoutForm = document.getElementById('checkoutForm');
+  checkoutForm?.addEventListener('input', () => {
+    document.getElementById('cartBuyButton').href = buildCartWhatsAppUrl();
+  });
+  checkoutForm?.addEventListener('submit', async (event) => {
+    event.preventDefault();
+    const customer = {
+      name: document.getElementById('checkoutName').value.trim(),
+      email: document.getElementById('checkoutEmail').value.trim(),
+      phone: document.getElementById('checkoutPhone').value.trim(),
+      address: document.getElementById('checkoutAddress').value.trim(),
+      city: document.getElementById('checkoutCity').value.trim(),
+      postalCode: document.getElementById('checkoutPostalCode').value.trim()
+    };
+    const button = document.getElementById('cardCheckoutBtn');
+    button.disabled = true;
+    button.textContent = 'Preparando pago...';
+    try {
+      const response = await fetch(`${API_URL}/checkout/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ items: getCart(), customer })
+      });
+      const data = await response.json();
+      if (!response.ok || !data.url) throw new Error(data.error || 'No se pudo iniciar el pago.');
+      window.location.href = data.url;
+    } catch (error) {
+      showToast(error.message, 'error');
+      button.disabled = false;
+      button.textContent = 'Pagar con tarjeta';
+    }
+  });
 
   body.querySelectorAll('.cart-qty-minus').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -391,7 +443,19 @@ function initCartWidget() {
         <div id="cartModalFooter" class="cart-modal-footer">
           <p class="cart-modal-total">Total: <strong id="cartModalTotal">$0.00</strong></p>
           <div class="cart-modal-actions">
-            <a id="cartBuyButton" class="btn btn-primary" target="_blank" rel="noopener">Comprar todo por WhatsApp</a>
+            <form id="checkoutForm" class="checkout-form">
+              <h3>Datos de entrega</h3>
+              <div class="checkout-form-grid">
+                <input id="checkoutName" type="text" placeholder="Nombre completo" required>
+                <input id="checkoutEmail" type="email" placeholder="Correo electrónico" required>
+                <input id="checkoutPhone" type="tel" placeholder="Teléfono" required>
+                <input id="checkoutAddress" type="text" placeholder="Calle y número" required>
+                <input id="checkoutCity" type="text" placeholder="Ciudad y estado" required>
+                <input id="checkoutPostalCode" type="text" inputmode="numeric" placeholder="Código postal" required>
+              </div>
+              <button id="cardCheckoutBtn" type="submit" class="btn btn-primary">Pagar con tarjeta</button>
+            </form>
+            <a id="cartBuyButton" class="btn btn-outline-accent" target="_blank" rel="noopener">Enviar pedido por WhatsApp</a>
             <button type="button" id="cartClearBtn" class="btn-text-danger">Vaciar carrito</button>
           </div>
         </div>

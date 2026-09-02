@@ -4,7 +4,6 @@ const { Pool } = require('pg');
 
 const DB_PATH = process.env.DB_PATH || path.join(__dirname, 'database.db');
 const DATABASE_URL = process.env.DATABASE_URL;
-const ContraseñaBD = 'HF1lL61a5TdPc9rh';
 
 if (DATABASE_URL) {
   const pool = new Pool({

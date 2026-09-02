@@ -123,6 +123,15 @@ Al terminar, Render proporcionará una URL pública similar a `https://portones-
 | --- | --- | --- |
 | `DATABASE_URL` | Render | URI de PostgreSQL proporcionada por Supabase |
 | `ADMIN_PASSWORD` | Render | Contraseña única y privada del panel administrativo |
+| `STRIPE_SECRET_KEY` | Render | Clave secreta de Stripe para activar pagos con tarjeta |
 | `PORT` | Render | No configurarla: Render la proporciona automáticamente |
 
 Para desarrollo local, puedes copiar `.env.example` como `.env`, definir únicamente `ADMIN_PASSWORD` y mantener `DATABASE_URL` vacío para seguir usando SQLite.
+
+### 4. Activar pagos con tarjeta
+
+El carrito ya solicita nombre, correo, teléfono y dirección de entrega. Para habilitar el botón **Pagar con tarjeta**, crea una cuenta de negocio en [Stripe](https://dashboard.stripe.com/), activa México y copia la **Secret key** desde Developers > API keys.
+
+Agrega esa clave como `STRIPE_SECRET_KEY` en Render. Nunca la pongas en el frontend, en GitHub ni en el chat. El pago se procesa en Stripe Checkout, que también solicita la dirección de envío; el servidor valida los productos y precios antes de crear la sesión.
+
+Mientras `STRIPE_SECRET_KEY` no exista, el pedido por WhatsApp seguirá disponible y usará los datos de entrega capturados en el carrito.

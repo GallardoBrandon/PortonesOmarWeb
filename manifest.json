@@ -1,12 +1,12 @@
 {
-  "name": "Portones & Mercancía",
+  "name": "Portones Eléctricos Omar",
   "short_name": "Portones Omar",
-  "description": "Instalación profesional de portones y venta de mercancía y refacciones.",
+  "description": "Reparación e instalación profesional de portones y venta de refacciones.",
   "start_url": "/index.html",
   "scope": "/",
   "display": "standalone",
-  "background_color": "#f6f7f9",
-  "theme_color": "#0f2540",
+  "background_color": "#f5f4f0",
+  "theme_color": "#17191b",
   "lang": "es",
   "icons": [
     { "src": "/logo.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

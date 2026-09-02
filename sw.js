@@ -1,5 +1,5 @@
 // Service worker: habilita instalación como PWA y navegación básica offline.
-const CACHE_NAME = 'portones-cache-v3';
+const CACHE_NAME = 'portones-cache-v4';
 const APP_SHELL = [
   '/',
   '/index.html',

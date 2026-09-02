@@ -5,11 +5,13 @@ const cors = require('cors');
 const bodyParser = require('body-parser');
 const path = require('path');
 const crypto = require('crypto');
+const Stripe = require('stripe');
 const db = require('./database');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
+const stripe = process.env.STRIPE_SECRET_KEY ? Stripe(process.env.STRIPE_SECRET_KEY) : null;
 
 // Almacén de tokens activos (id -> { token, expiresAt })
 const activeTokens = new Map();
@@ -155,6 +157,56 @@ app.get('/api/products/:id', (req, res) => {
     } else {
       res.json({ imageData: row.image_data });
     }
+  });
+});
+
+app.post('/api/checkout/create', (req, res) => {
+  if (!stripe) {
+    return res.status(503).json({ error: 'El pago con tarjeta todavía no está configurado.' });
+  }
+
+  const { items, customer } = req.body;
+  if (!Array.isArray(items) || items.length === 0 || !customer || !customer.name || !customer.email || !customer.phone || !customer.address || !customer.city || !customer.postalCode) {
+    return res.status(400).json({ error: 'Completa nombre, correo, teléfono, dirección, ciudad y código postal.' });
+  }
+
+  db.getProducts((productError, products) => {
+    if (productError) return res.status(500).json({ error: productError.message });
+    const productMap = new Map((products || []).map(product => [String(product.id), product]));
+    const lineItems = [];
+
+    for (const item of items) {
+      const product = productMap.get(String(item.id));
+      const quantity = Number(item.quantity);
+      if (!product || !Number.isInteger(quantity) || quantity < 1 || quantity > 99) {
+        return res.status(400).json({ error: 'Hay un producto o cantidad inválida en el carrito.' });
+      }
+      lineItems.push({
+        price_data: {
+          currency: 'mxn',
+          product_data: { name: product.name + (item.variant ? ` (${item.variant})` : '') },
+          unit_amount: Math.round(Number(product.price) * 100)
+        },
+        quantity
+      });
+    }
+
+    const origin = `${req.protocol}://${req.get('host')}`;
+    stripe.checkout.sessions.create({
+      mode: 'payment',
+      line_items: lineItems,
+      customer_email: customer.email,
+      phone_number_collection: { enabled: true },
+      shipping_address_collection: { allowed_countries: ['MX'] },
+      metadata: {
+        customer_name: customer.name,
+        customer_phone: customer.phone,
+        delivery_address: `${customer.address}, ${customer.city}, ${customer.postalCode}`
+      },
+      success_url: `${origin}/productos.html?pago=exitoso`,
+      cancel_url: `${origin}/productos.html?pago=cancelado`
+    }).then(session => res.json({ url: session.url }))
+      .catch(error => res.status(502).json({ error: 'No se pudo iniciar el pago con tarjeta.' }));
   });
 });
 

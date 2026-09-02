@@ -258,6 +258,11 @@ button{font-family:inherit}
 .btn-outline-accent:hover{background:var(--accent);color:#fff}
 .product-buy-actions{display:flex;gap:12px;flex-wrap:wrap}
 .product-buy-actions .btn{flex:1;min-width:180px}
+.checkout-form{display:grid;gap:12px;margin-bottom:4px;text-align:left}
+.checkout-form h3{font-size:1.35rem;text-transform:uppercase;margin:0}
+.checkout-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.checkout-form input{min-width:0}
+.checkout-form .btn{width:100%;border:0}
 
 .admin-header-main{background:linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);color:#fff;padding:24px 0;border-bottom:3px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
 .admin-header-main h1{margin:0;font-size:1.8rem;color:#fff}
@@ -546,6 +551,7 @@ input:focus,textarea:focus,.quantity-selector select:focus{outline:2px solid var
   .cart-item-controls{grid-column:1 / 2}
   .cart-item-subtotal{grid-column:2 / 3;grid-row:2}
   .cart-item-remove{grid-column:2 / 3;grid-row:1}
+  .checkout-form-grid{grid-template-columns:1fr}
 }
 
 @media (max-width:480px){
