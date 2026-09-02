@@ -218,7 +218,7 @@ app.get('/', (req, res) => {
 
 // Iniciar servidor después de inicializar la base de datos.
 db.ready.then(() => {
-  app.listen(PORT, () => {
+  app.listen(PORT, '0.0.0.0', () => {
     console.log(`
 ╔══════════════════════════════════════╗
 ║  Servidor ejecutándose en:          ║
