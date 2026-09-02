@@ -4,7 +4,7 @@ const API_URL = '/api';
 // Registrar el service worker para que el sitio se pueda instalar como PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').catch((err) => console.error('Error registrando service worker:', err));
+    navigator.serviceWorker.register('/sw.js?v=3').catch((err) => console.error('Error registrando service worker:', err));
   });
 }
 
@@ -56,11 +56,11 @@ async function loadViews() {
   
   try {
     // Cargar vista cliente
-    const clientRes = await fetch('cliente.html');
+    const clientRes = await fetch('cliente.html?v=3');
     const clientHTML = await clientRes.text();
     
     // Cargar vista admin
-    const adminRes = await fetch('admin.html');
+    const adminRes = await fetch('admin.html?v=3');
     const adminHTML = await adminRes.text();
     
     // Insertar ambas vistas en el contenedor app
