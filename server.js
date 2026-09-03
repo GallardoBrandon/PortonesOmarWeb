@@ -124,7 +124,7 @@ function requireCustomer(req, res, next) {
 app.post('/api/account/signup', async (req, res) => {
   if (!SUPABASE_URL || !SUPABASE_ANON_KEY) return res.status(503).json({ error: 'Las cuentas de clientes no están configuradas.' });
   const { email, password, name } = req.body;
-  if (!email || !password || !name || password.length < 8) return res.status(400).json({ error: 'Escribe nombre, correo y una contraseña de al menos 8 caracteres.' });
+  if (!email || !password || !name || password.length < 6 || !/^[A-Z]/.test(password) || !/\d/.test(password)) return res.status(400).json({ error: 'La contraseña debe tener mínimo 6 caracteres, comenzar con mayúscula e incluir al menos un número.' });
   try {
     const response = await fetch(`${SUPABASE_URL}/auth/v1/signup`, { method: 'POST', headers: { apikey: SUPABASE_ANON_KEY, 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password, data: { name } }) });
     const data = await response.json();

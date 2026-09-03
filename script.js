@@ -1211,6 +1211,26 @@ function initAccountPage() {
   const dashboard = document.getElementById('accountDashboard');
   if (!auth || !dashboard) return;
   const toast = (message, type = 'success') => showToast(message, type);
+  const signupPasswordInput = document.getElementById('signupPassword');
+  const passwordMeterBar = document.getElementById('passwordMeterBar');
+  const passwordStrengthLabel = document.getElementById('passwordStrengthLabel');
+  const passwordRules = {
+    length: document.getElementById('passwordRuleLength'),
+    upper: document.getElementById('passwordRuleUpper'),
+    number: document.getElementById('passwordRuleNumber')
+  };
+  function updatePasswordStrength() {
+    const password = signupPasswordInput.value;
+    const valid = { length: password.length >= 6, upper: /^[A-Z]/.test(password), number: /\d/.test(password) };
+    Object.entries(valid).forEach(([rule, isValid]) => passwordRules[rule].classList.toggle('valid', isValid));
+    const score = Object.values(valid).filter(Boolean).length + (password.length >= 10 ? 1 : 0) + (/[A-Z]/.test(password.slice(1)) && /[^A-Za-z0-9]/.test(password) ? 1 : 0);
+    const levels = password ? (score <= 2 ? { label: 'Nivel de seguridad: baja', width: '33%', color: '#ba3b32' } : score <= 4 ? { label: 'Nivel de seguridad: media', width: '66%', color: '#c17b16' } : { label: 'Nivel de seguridad: alta', width: '100%', color: '#176b57' }) : { label: 'Nivel de seguridad: escribe una contraseña', width: '0%', color: '#ba3b32' };
+    passwordMeterBar.style.width = levels.width;
+    passwordMeterBar.style.background = levels.color;
+    passwordStrengthLabel.textContent = levels.label;
+    return valid.length && valid.upper && valid.number;
+  }
+  signupPasswordInput.addEventListener('input', updatePasswordStrength);
   const renderAccount = async () => {
     auth.hidden = true;
     dashboard.hidden = false;
@@ -1236,7 +1256,7 @@ function initAccountPage() {
     list.innerHTML = orders.length ? orders.map(order => `<article class="saved-order"><strong>${escapeHtml(order.ticket_number)}</strong><span>${escapeHtml(order.status === 'realizado' ? 'Realizado' : 'En proceso')}</span><p>${new Date(order.paid_at).toLocaleDateString('es-MX')} · $${Number(order.total).toFixed(2)} MXN</p><small>${escapeHtml(order.delivery_address)}</small></article>`).join('') : '<p class="account-helper">Tus compras pagadas aparecerán aquí.</p>';
   }
   document.getElementById('accountLoginForm').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch(`${API_URL}/account/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value }) }); const data = await response.json(); if (!response.ok) return toast(data.error, 'error'); setCustomerToken(data.access_token); renderAccount(); });
-  document.getElementById('accountSignupForm').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch(`${API_URL}/account/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('signupName').value, email: document.getElementById('signupEmail').value, password: document.getElementById('signupPassword').value }) }); const data = await response.json(); if (!response.ok) return toast(data.error, 'error'); if (data.session?.access_token) { setCustomerToken(data.session.access_token); renderAccount(); } else toast(data.message || 'Revisa tu correo para confirmar la cuenta.', 'info'); });
+  document.getElementById('accountSignupForm').addEventListener('submit', async event => { event.preventDefault(); if (!updatePasswordStrength()) return toast('La contraseña no cumple todos los requisitos.', 'error'); const response = await fetch(`${API_URL}/account/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('signupName').value, email: document.getElementById('signupEmail').value, password: document.getElementById('signupPassword').value }) }); const data = await response.json(); if (!response.ok) return toast(data.error, 'error'); if (data.session?.access_token) { setCustomerToken(data.session.access_token); renderAccount(); } else toast(data.message || 'Revisa tu correo para confirmar la cuenta.', 'info'); });
   document.getElementById('accountLogoutBtn').addEventListener('click', () => { clearCustomerToken(); auth.hidden = false; dashboard.hidden = true; });
   document.getElementById('addAddressBtn').addEventListener('click', () => { document.getElementById('addressForm').hidden = false; });
   document.getElementById('cancelAddressBtn').addEventListener('click', () => { document.getElementById('addressForm').hidden = true; });
