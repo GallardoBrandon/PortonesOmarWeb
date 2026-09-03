@@ -13,7 +13,7 @@ function escapeHtml(value) {
 // Registrar el service worker para que el sitio se pueda instalar como PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=5').catch((err) => console.error('Error registrando service worker:', err));
+    navigator.serviceWorker.register('/sw.js?v=6').catch((err) => console.error('Error registrando service worker:', err));
   });
 }
 
@@ -943,9 +943,9 @@ function initializeApp() {
     inProcess.innerHTML = '<p class="admin-helper-text">Cargando pedidos...</p>';
     completed.innerHTML = '<p class="admin-helper-text">Cargando pedidos...</p>';
     Promise.all([
-      fetchWithAuth(`${API_URL}/orders?status=en_proceso`).then(response => response.json()),
-      fetchWithAuth(`${API_URL}/orders?status=realizado`).then(response => response.json())
-    ]).then(([pending, done]) => { renderOrders(inProcess, pending, false); renderOrders(completed, done, true); })
+      fetchWithAuth(`${API_URL}/orders?status=en_proceso`).then(response => response.ok ? response.json() : []),
+      fetchWithAuth(`${API_URL}/orders?status=realizado`).then(response => response.ok ? response.json() : [])
+    ]).then(([pending, done]) => { renderOrders(inProcess, Array.isArray(pending) ? pending : [], false); renderOrders(completed, Array.isArray(done) ? done : [], true); })
       .catch(error => { inProcess.innerHTML = '<p style="color:red;">Error al cargar pedidos.</p>'; completed.innerHTML = '<p style="color:red;">Error al cargar pedidos.</p>'; console.error('Error cargando pedidos:', error); });
   }
 
