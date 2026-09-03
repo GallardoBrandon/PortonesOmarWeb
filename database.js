@@ -47,6 +47,21 @@ if (DATABASE_URL) {
         image_data TEXT NOT NULL,
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS orders (
+        id SERIAL PRIMARY KEY,
+        ticket_number TEXT UNIQUE NOT NULL,
+        stripe_session_id TEXT UNIQUE NOT NULL,
+        stripe_event_id TEXT UNIQUE NOT NULL,
+        customer_name TEXT NOT NULL,
+        customer_email TEXT NOT NULL,
+        customer_phone TEXT NOT NULL,
+        delivery_address TEXT NOT NULL,
+        items JSONB NOT NULL,
+        total NUMERIC NOT NULL,
+        status TEXT NOT NULL DEFAULT 'en_proceso',
+        paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
     `).then(() => pool.query(`
       INSERT INTO products (name, price, description, featured)
       SELECT product.name, product.price, product.description, 1
@@ -136,6 +151,28 @@ if (DATABASE_URL) {
     query('DELETE FROM images WHERE id = $1', [id], err => callback(err));
   }
 
+  function addPaidOrder(order, callback) {
+    query(
+      `INSERT INTO orders (ticket_number, stripe_session_id, stripe_event_id, customer_name, customer_email, customer_phone, delivery_address, items, total, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, 'en_proceso')
+       ON CONFLICT (stripe_session_id) DO NOTHING RETURNING id, ticket_number`,
+      [order.ticketNumber, order.sessionId, order.eventId, order.name, order.email, order.phone, order.address, JSON.stringify(order.items), order.total],
+      (err, result) => callback(err, result && result.rows[0] ? result.rows[0] : null)
+    );
+  }
+
+  function getOrders(status, callback) {
+    const params = status ? [status] : [];
+    const sql = status
+      ? 'SELECT * FROM orders WHERE status = $1 ORDER BY paid_at DESC'
+      : 'SELECT * FROM orders ORDER BY paid_at DESC';
+    query(sql, params, (err, result) => callback(err, result ? result.rows : null));
+  }
+
+  function updateOrderStatus(id, status, callback) {
+    query('UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [status, id], err => callback(err));
+  }
+
   module.exports = {
     db: pool,
     ready,
@@ -149,6 +186,9 @@ if (DATABASE_URL) {
     getImages,
     getImageData,
     deleteImage
+    ,addPaidOrder
+    ,getOrders
+    ,updateOrderStatus
   };
   return;
 }
@@ -198,6 +238,23 @@ function initDatabase() {
       title TEXT NOT NULL,
       image_data LONGTEXT NOT NULL,
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+    )
+  `);
+  db.run(`
+    CREATE TABLE IF NOT EXISTS orders (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      ticket_number TEXT UNIQUE NOT NULL,
+      stripe_session_id TEXT UNIQUE NOT NULL,
+      stripe_event_id TEXT UNIQUE NOT NULL,
+      customer_name TEXT NOT NULL,
+      customer_email TEXT NOT NULL,
+      customer_phone TEXT NOT NULL,
+      delivery_address TEXT NOT NULL,
+      items TEXT NOT NULL,
+      total REAL NOT NULL,
+      status TEXT NOT NULL DEFAULT 'en_proceso',
+      paid_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+      updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
 
@@ -345,6 +402,30 @@ function deleteImage(id, callback) {
   db.run('DELETE FROM images WHERE id = ?', [id], callback);
 }
 
+function addPaidOrder(order, callback) {
+  db.run(
+    `INSERT OR IGNORE INTO orders (ticket_number, stripe_session_id, stripe_event_id, customer_name, customer_email, customer_phone, delivery_address, items, total, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'en_proceso')`,
+    [order.ticketNumber, order.sessionId, order.eventId, order.name, order.email, order.phone, order.address, JSON.stringify(order.items), order.total],
+    function(err) { callback(err, err || !this.changes ? null : { id: this.lastID, ticket_number: order.ticketNumber }); }
+  );
+}
+
+function getOrders(status, callback) {
+  if (typeof status === 'function') {
+    callback = status;
+    status = null;
+  }
+  const sql = status
+    ? 'SELECT * FROM orders WHERE status = ? ORDER BY paid_at DESC'
+    : 'SELECT * FROM orders ORDER BY paid_at DESC';
+  db.all(sql, status ? [status] : [], callback);
+}
+
+function updateOrderStatus(id, status, callback) {
+  db.run('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id], callback);
+}
+
 module.exports = {
   db,
   ready: Promise.resolve(),
@@ -358,4 +439,7 @@ module.exports = {
   getImages,
   getImageData,
   deleteImage
+  ,addPaidOrder
+  ,getOrders
+  ,updateOrderStatus
 };

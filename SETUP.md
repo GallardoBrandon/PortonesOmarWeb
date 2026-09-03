@@ -135,3 +135,20 @@ El carrito ya solicita nombre, correo, teléfono y dirección de entrega. Para h
 Agrega esa clave como `STRIPE_SECRET_KEY` en Render. Nunca la pongas en el frontend, en GitHub ni en el chat. El pago se procesa en Stripe Checkout, que también solicita la dirección de envío; el servidor valida los productos y precios antes de crear la sesión.
 
 Mientras `STRIPE_SECRET_KEY` no exista, el pedido por WhatsApp seguirá disponible y usará los datos de entrega capturados en el carrito.
+
+### 5. Crear tickets después del pago
+
+En Stripe, abre **Developers > Webhooks > Add endpoint** y registra:
+
+```text
+https://portones-omar.onrender.com/api/stripe/webhook
+```
+
+Selecciona estos eventos:
+
+- `checkout.session.completed`
+- `checkout.session.async_payment_succeeded`
+
+Copia el **Signing secret** del endpoint, que comienza con `whsec_`, y agrégalo en Render como `STRIPE_WEBHOOK_SECRET`. Después pulsa **Save, rebuild, and deploy**.
+
+El servidor verifica la firma y `payment_status = paid` antes de insertar el pedido. Stripe puede reenviar un evento y no se duplicará el ticket porque la sesión y el evento tienen restricciones únicas.

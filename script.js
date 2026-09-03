@@ -723,6 +723,7 @@ function initializeApp() {
         adminLoginModal.style.display = 'none';
         document.getElementById('adminPassword').value = '';
         loadPricesUI();
+        loadOrdersUI();
         loadUploadedImages();
         showAdminView();
       } else {
@@ -885,6 +886,53 @@ function initializeApp() {
       item.classList.toggle('hidden', !matches);
     });
   }
+
+  function escapeHtml(value) {
+    return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+  }
+
+  function renderOrders(container, orders, completed) {
+    if (!container) return;
+    if (!orders || orders.length === 0) {
+      container.innerHTML = '<p class="admin-helper-text">No hay pedidos en esta sección.</p>';
+      return;
+    }
+    container.innerHTML = orders.map(order => {
+      let items = [];
+      try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (error) { items = []; }
+      const itemText = items.map(item => `${escapeHtml(item.name || `Producto ${item.id}`)}${item.variant ? ` (${escapeHtml(item.variant)})` : ''} x${item.quantity}`).join('<br>');
+      return `<article class="order-card${completed ? ' completed' : ''}">
+        <div class="order-card-header"><strong class="order-ticket">${escapeHtml(order.ticket_number)}</strong><time class="order-date">${new Date(order.paid_at).toLocaleString('es-MX')}</time></div>
+        <p class="order-customer"><strong>${escapeHtml(order.customer_name)}</strong><br>${escapeHtml(order.customer_email)} · ${escapeHtml(order.customer_phone)}</p>
+        <p class="order-address"><strong>Entrega:</strong> ${escapeHtml(order.delivery_address)}</p>
+        <div class="order-items">${itemText || '<span>Detalle no disponible</span>'}</div>
+        <p class="order-total">$${Number(order.total).toFixed(2)} MXN</p>
+        ${completed ? '' : `<button type="button" class="btn btn-primary mark-order-done" data-id="${escapeHtml(order.id)}">Marcar como realizado</button>`}
+      </article>`;
+    }).join('');
+    container.querySelectorAll('.mark-order-done').forEach(button => {
+      button.addEventListener('click', () => {
+        fetchWithAuth(`${API_URL}/orders/${button.dataset.id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'realizado' }) })
+          .then(response => { if (!response.ok) throw new Error('No se pudo actualizar el pedido.'); loadOrdersUI(); })
+          .catch(error => showToast(error.message, 'error'));
+      });
+    });
+  }
+
+  function loadOrdersUI() {
+    const inProcess = document.getElementById('ordersInProcess');
+    const completed = document.getElementById('ordersCompleted');
+    if (!inProcess || !completed) return;
+    inProcess.innerHTML = '<p class="admin-helper-text">Cargando pedidos...</p>';
+    completed.innerHTML = '<p class="admin-helper-text">Cargando pedidos...</p>';
+    Promise.all([
+      fetchWithAuth(`${API_URL}/orders?status=en_proceso`).then(response => response.json()),
+      fetchWithAuth(`${API_URL}/orders?status=realizado`).then(response => response.json())
+    ]).then(([pending, done]) => { renderOrders(inProcess, pending, false); renderOrders(completed, done, true); })
+      .catch(error => { inProcess.innerHTML = '<p style="color:red;">Error al cargar pedidos.</p>'; completed.innerHTML = '<p style="color:red;">Error al cargar pedidos.</p>'; console.error('Error cargando pedidos:', error); });
+  }
+
+  document.getElementById('refreshOrdersBtn')?.addEventListener('click', loadOrdersUI);
 
   const productSearchInput = document.getElementById('productSearchInput');
   if(productSearchInput){
@@ -1127,6 +1175,7 @@ function initializeApp() {
         } else {
           adminLoggedIn = true;
           loadPricesUI();
+          loadOrdersUI();
           loadUploadedImages();
           showAdminView();
         }

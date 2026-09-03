@@ -10,6 +10,7 @@
   <main class="container admin-main">
     <div class="admin-tabs">
       <button class="tab-btn active" data-tab="prices">Productos</button>
+      <button class="tab-btn" data-tab="orders">Pedidos</button>
       <button class="tab-btn" data-tab="images">Subir Imágenes</button>
     </div>
 
@@ -23,6 +24,26 @@
         <input type="text" id="productSearchInput" class="product-search-input" placeholder="Buscar producto por nombre...">
       </div>
       <div id="pricesList" class="prices-list"></div>
+    </div>
+
+    <div id="ordersTab" class="tab-content">
+      <div class="admin-section-header">
+        <div>
+          <h3>Pedidos pagados</h3>
+          <p class="admin-helper-text">Los tickets aparecen aquí únicamente después de confirmar el pago.</p>
+        </div>
+        <button type="button" id="refreshOrdersBtn" class="btn-add-product">Actualizar</button>
+      </div>
+      <div class="orders-columns">
+        <section class="orders-column">
+          <h4>En proceso</h4>
+          <div id="ordersInProcess" class="orders-list"></div>
+        </section>
+        <section class="orders-column">
+          <h4>Realizados</h4>
+          <div id="ordersCompleted" class="orders-list"></div>
+        </section>
+      </div>
     </div>
 
     <!-- Tab Imágenes -->

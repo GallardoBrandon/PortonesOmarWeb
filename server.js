@@ -13,9 +13,60 @@ app.set('trust proxy', 1);
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const stripe = process.env.STRIPE_SECRET_KEY ? Stripe(process.env.STRIPE_SECRET_KEY) : null;
+const STRIPE_WEBHOOK_SECRET = process.env.STRIPE_WEBHOOK_SECRET;
 
 // Almacén de tokens activos (id -> { token, expiresAt })
 const activeTokens = new Map();
+
+app.post('/api/stripe/webhook', express.raw({ type: 'application/json' }), (req, res) => {
+  if (!stripe || !STRIPE_WEBHOOK_SECRET) return res.status(503).send('Webhook no configurado');
+
+  let event;
+  try {
+    event = stripe.webhooks.constructEvent(req.body, req.headers['stripe-signature'], STRIPE_WEBHOOK_SECRET);
+  } catch (error) {
+    return res.status(400).send('Firma inválida');
+  }
+
+  if (event.type === 'checkout.session.completed' || event.type === 'checkout.session.async_payment_succeeded') {
+    const session = event.data.object;
+    if (session.payment_status !== 'paid') return res.json({ received: true });
+
+    let items = [];
+    try { items = JSON.parse(session.metadata?.items || '[]'); } catch (error) { items = []; }
+    const ticketNumber = `PO-${Date.now()}-${crypto.randomBytes(3).toString('hex').toUpperCase()}`;
+    const shipping = session.shipping_details?.address || {};
+    const address = session.metadata?.delivery_address || [
+      session.shipping_details?.name,
+      shipping.line1,
+      shipping.line2,
+      shipping.city,
+      shipping.state,
+      shipping.postal_code
+    ].filter(Boolean).join(', ');
+
+    db.addPaidOrder({
+      ticketNumber,
+      sessionId: session.id,
+      eventId: event.id,
+      name: session.metadata?.customer_name || session.shipping_details?.name || 'Cliente',
+      email: session.customer_details?.email || session.customer_email || '',
+      phone: session.metadata?.customer_phone || session.customer_details?.phone || '',
+      address,
+      items,
+      total: (session.amount_total || 0) / 100
+    }, error => {
+      if (error) {
+        console.error('Error guardando ticket pagado:', error.message);
+        return res.status(500).send('No se pudo guardar el ticket');
+      }
+      res.json({ received: true });
+    });
+    return;
+  }
+
+  res.json({ received: true });
+});
 
 // Middleware
 app.use(cors());
@@ -175,6 +226,7 @@ app.post('/api/checkout/create', (req, res) => {
     if (productError) return res.status(500).json({ error: productError.message });
     const productMap = new Map((products || []).map(product => [String(product.id), product]));
     const lineItems = [];
+    const ticketItems = [];
 
     for (const item of items) {
       const product = productMap.get(String(item.id));
@@ -190,6 +242,7 @@ app.post('/api/checkout/create', (req, res) => {
         },
         quantity
       });
+      ticketItems.push({ id: product.id, name: product.name, quantity, variant: item.variant || null });
     }
 
     const origin = `${req.protocol}://${req.get('host')}`;
@@ -202,12 +255,32 @@ app.post('/api/checkout/create', (req, res) => {
       metadata: {
         customer_name: customer.name,
         customer_phone: customer.phone,
-        delivery_address: `${customer.address}, ${customer.city}, ${customer.postalCode}`
+        delivery_address: `${customer.address}, ${customer.city}, C.P. ${customer.postalCode}`,
+        items: JSON.stringify(ticketItems)
       },
       success_url: `${origin}/productos.html?pago=exitoso`,
       cancel_url: `${origin}/productos.html?pago=cancelado`
     }).then(session => res.json({ url: session.url }))
       .catch(error => res.status(502).json({ error: 'No se pudo iniciar el pago con tarjeta.' }));
+  });
+});
+
+app.get('/api/orders', verifyToken, (req, res) => {
+  const status = ['en_proceso', 'realizado'].includes(req.query.status) ? req.query.status : null;
+  db.getOrders(status, (error, rows) => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json(rows || []);
+  });
+});
+
+app.put('/api/orders/:id/status', verifyToken, (req, res) => {
+  const { status } = req.body;
+  if (!['en_proceso', 'realizado'].includes(status)) {
+    return res.status(400).json({ error: 'Estado de pedido inválido.' });
+  }
+  db.updateOrderStatus(req.params.id, status, error => {
+    if (error) return res.status(500).json({ error: error.message });
+    res.json({ success: true });
   });
 });
 
