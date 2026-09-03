@@ -136,6 +136,12 @@ Agrega esa clave como `STRIPE_SECRET_KEY` en Render. Nunca la pongas en el front
 
 Mientras `STRIPE_SECRET_KEY` no exista, el pedido por WhatsApp seguirá disponible y usará los datos de entrega capturados en el carrito.
 
+### 4.1 Activar cuentas de clientes
+
+En Supabase, copia la **Project URL** y la clave pública **anon** desde **Project Settings > API**. Agrégalas en Render como `SUPABASE_URL` y `SUPABASE_ANON_KEY`. La anon key puede usarse en el navegador, pero nunca compartas la `service_role` key.
+
+La confirmación de correo puede activarse en **Authentication > Providers > Email**. Si está activa, el cliente debe confirmar su correo antes de iniciar sesión.
+
 ### 5. Crear tickets después del pago
 
 En Stripe, abre **Developers > Webhooks > Add endpoint** y registra:

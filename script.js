@@ -1,5 +1,14 @@
 // Script para manejar API REST, admin panel e imágenes
 const API_URL = '/api';
+const CUSTOMER_TOKEN_KEY = 'customer_access_token';
+
+function getCustomerToken() { return localStorage.getItem(CUSTOMER_TOKEN_KEY); }
+function setCustomerToken(token) { localStorage.setItem(CUSTOMER_TOKEN_KEY, token); }
+function clearCustomerToken() { localStorage.removeItem(CUSTOMER_TOKEN_KEY); }
+
+function escapeHtml(value) {
+  return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
+}
 
 // Registrar el service worker para que el sitio se pueda instalar como PWA
 if ('serviceWorker' in navigator) {
@@ -384,7 +393,7 @@ function renderCartModal() {
     try {
       const response = await fetch(`${API_URL}/checkout/create`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 'Content-Type': 'application/json', ...(getCustomerToken() ? { Authorization: `Bearer ${getCustomerToken()}` } : {}) },
         body: JSON.stringify({ items: getCart(), customer })
       });
       const data = await response.json();
@@ -396,6 +405,18 @@ function renderCartModal() {
       button.textContent = 'Pagar con tarjeta';
     }
   });
+
+  if (getCustomerToken()) {
+    fetch(`${API_URL}/account/addresses`, { headers: { Authorization: `Bearer ${getCustomerToken()}` } })
+      .then(response => response.ok ? response.json() : [])
+      .then(addresses => {
+        const address = addresses[0];
+        if (!address) return;
+        const values = { checkoutName: address.recipient, checkoutPhone: address.phone, checkoutAddress: address.address, checkoutCity: `${address.city}, ${address.state}`, checkoutPostalCode: address.postal_code };
+        Object.entries(values).forEach(([id, value]) => { const input = document.getElementById(id); if (input && !input.value) input.value = value; });
+        document.getElementById('cartBuyButton').href = buildCartWhatsAppUrl();
+      }).catch(() => {});
+  }
 
   body.querySelectorAll('.cart-qty-minus').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -887,10 +908,6 @@ function initializeApp() {
     });
   }
 
-  function escapeHtml(value) {
-    return String(value ?? '').replace(/[&<>'"]/g, character => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;' }[character]));
-  }
-
   function renderOrders(container, orders, completed) {
     if (!container) return;
     if (!orders || orders.length === 0) {
@@ -1189,6 +1206,44 @@ function initializeApp() {
   }
 }
 
+function initAccountPage() {
+  const auth = document.getElementById('accountAuth');
+  const dashboard = document.getElementById('accountDashboard');
+  if (!auth || !dashboard) return;
+  const toast = (message, type = 'success') => showToast(message, type);
+  const renderAccount = async () => {
+    auth.hidden = true;
+    dashboard.hidden = false;
+    try {
+      const meResponse = await fetch(`${API_URL}/account/me`, { headers: { Authorization: `Bearer ${getCustomerToken()}` } });
+      if (!meResponse.ok) throw new Error('Sesión expirada');
+      const me = await meResponse.json();
+      document.getElementById('accountGreeting').textContent = `Hola, ${me.user.user_metadata?.name || me.user.email}`;
+      await Promise.all([loadAccountAddresses(), loadCustomerOrders()]);
+    } catch (error) { clearCustomerToken(); auth.hidden = false; dashboard.hidden = true; }
+  };
+  async function loadAccountAddresses() {
+    const list = document.getElementById('addressesList');
+    const response = await fetch(`${API_URL}/account/addresses`, { headers: { Authorization: `Bearer ${getCustomerToken()}` } });
+    const addresses = response.ok ? await response.json() : [];
+    list.innerHTML = addresses.length ? addresses.map(address => `<article class="saved-address"><strong>${escapeHtml(address.label)}</strong><p>${escapeHtml(address.recipient)} · ${escapeHtml(address.phone)}<br>${escapeHtml(address.address)}, ${escapeHtml(address.city)}, ${escapeHtml(address.state)}, C.P. ${escapeHtml(address.postal_code)}</p><button type="button" class="btn-text-danger delete-address" data-id="${escapeHtml(address.id)}">Eliminar</button></article>`).join('') : '<p class="account-helper">Todavía no tienes direcciones guardadas.</p>';
+    list.querySelectorAll('.delete-address').forEach(button => button.addEventListener('click', async () => { await fetch(`${API_URL}/account/addresses/${button.dataset.id}`, { method: 'DELETE', headers: { Authorization: `Bearer ${getCustomerToken()}` } }); loadAccountAddresses(); }));
+  }
+  async function loadCustomerOrders() {
+    const list = document.getElementById('customerOrdersList');
+    const response = await fetch(`${API_URL}/account/orders`, { headers: { Authorization: `Bearer ${getCustomerToken()}` } });
+    const orders = response.ok ? await response.json() : [];
+    list.innerHTML = orders.length ? orders.map(order => `<article class="saved-order"><strong>${escapeHtml(order.ticket_number)}</strong><span>${escapeHtml(order.status === 'realizado' ? 'Realizado' : 'En proceso')}</span><p>${new Date(order.paid_at).toLocaleDateString('es-MX')} · $${Number(order.total).toFixed(2)} MXN</p><small>${escapeHtml(order.delivery_address)}</small></article>`).join('') : '<p class="account-helper">Tus compras pagadas aparecerán aquí.</p>';
+  }
+  document.getElementById('accountLoginForm').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch(`${API_URL}/account/login`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email: document.getElementById('loginEmail').value, password: document.getElementById('loginPassword').value }) }); const data = await response.json(); if (!response.ok) return toast(data.error, 'error'); setCustomerToken(data.access_token); renderAccount(); });
+  document.getElementById('accountSignupForm').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch(`${API_URL}/account/signup`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ name: document.getElementById('signupName').value, email: document.getElementById('signupEmail').value, password: document.getElementById('signupPassword').value }) }); const data = await response.json(); if (!response.ok) return toast(data.error, 'error'); if (data.session?.access_token) { setCustomerToken(data.session.access_token); renderAccount(); } else toast(data.message || 'Revisa tu correo para confirmar la cuenta.', 'info'); });
+  document.getElementById('accountLogoutBtn').addEventListener('click', () => { clearCustomerToken(); auth.hidden = false; dashboard.hidden = true; });
+  document.getElementById('addAddressBtn').addEventListener('click', () => { document.getElementById('addressForm').hidden = false; });
+  document.getElementById('cancelAddressBtn').addEventListener('click', () => { document.getElementById('addressForm').hidden = true; });
+  document.getElementById('addressForm').addEventListener('submit', async event => { event.preventDefault(); const response = await fetch(`${API_URL}/account/addresses`, { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getCustomerToken()}` }, body: JSON.stringify({ label: document.getElementById('addressLabel').value, recipient: document.getElementById('addressRecipient').value, phone: document.getElementById('addressPhone').value, address: document.getElementById('addressStreet').value, city: document.getElementById('addressCity').value, state: document.getElementById('addressState').value, postalCode: document.getElementById('addressPostalCode').value }) }); if (!response.ok) return toast((await response.json()).error, 'error'); event.target.reset(); event.target.hidden = true; loadAccountAddresses(); });
+  if (getCustomerToken()) renderAccount();
+}
+
 // Inicialización para páginas independientes (productos.html, galeria.html)
 function initStaticPage() {
   const yearEl = document.getElementById('year');
@@ -1214,4 +1269,5 @@ document.addEventListener('DOMContentLoaded', function(){
   } else {
     initStaticPage();
   }
+  initAccountPage();
 });

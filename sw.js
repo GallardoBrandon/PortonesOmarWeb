@@ -9,6 +9,7 @@ const APP_SHELL = [
   '/instalar.html',
   '/cliente.html',
   '/admin.html',
+  '/cuenta.html',
   '/styles.css',
   '/script.js',
   '/logo.png',

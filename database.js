@@ -62,6 +62,19 @@ if (DATABASE_URL) {
         paid_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
         updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
+      CREATE TABLE IF NOT EXISTS addresses (
+        id SERIAL PRIMARY KEY,
+        user_id UUID NOT NULL,
+        label TEXT NOT NULL,
+        recipient TEXT NOT NULL,
+        phone TEXT NOT NULL,
+        address TEXT NOT NULL,
+        city TEXT NOT NULL,
+        state TEXT NOT NULL,
+        postal_code TEXT NOT NULL,
+        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+      );
+      ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id UUID;
     `).then(() => pool.query(`
       INSERT INTO products (name, price, description, featured)
       SELECT product.name, product.price, product.description, 1
@@ -153,10 +166,10 @@ if (DATABASE_URL) {
 
   function addPaidOrder(order, callback) {
     query(
-      `INSERT INTO orders (ticket_number, stripe_session_id, stripe_event_id, customer_name, customer_email, customer_phone, delivery_address, items, total, status)
-       VALUES ($1, $2, $3, $4, $5, $6, $7, $8::jsonb, $9, 'en_proceso')
+      `INSERT INTO orders (ticket_number, stripe_session_id, stripe_event_id, user_id, customer_name, customer_email, customer_phone, delivery_address, items, total, status)
+       VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9::jsonb, $10, 'en_proceso')
        ON CONFLICT (stripe_session_id) DO NOTHING RETURNING id, ticket_number`,
-      [order.ticketNumber, order.sessionId, order.eventId, order.name, order.email, order.phone, order.address, JSON.stringify(order.items), order.total],
+      [order.ticketNumber, order.sessionId, order.eventId, order.userId || null, order.name, order.email, order.phone, order.address, JSON.stringify(order.items), order.total],
       (err, result) => callback(err, result && result.rows[0] ? result.rows[0] : null)
     );
   }
@@ -171,6 +184,22 @@ if (DATABASE_URL) {
 
   function updateOrderStatus(id, status, callback) {
     query('UPDATE orders SET status = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2', [status, id], err => callback(err));
+  }
+
+  function getAddresses(userId, callback) {
+    query('SELECT id, label, recipient, phone, address, city, state, postal_code, created_at FROM addresses WHERE user_id = $1 ORDER BY created_at DESC', [userId], (err, result) => callback(err, result ? result.rows : null));
+  }
+
+  function addAddress(userId, address, callback) {
+    query('INSERT INTO addresses (user_id, label, recipient, phone, address, city, state, postal_code) VALUES ($1, $2, $3, $4, $5, $6, $7, $8) RETURNING id', [userId, address.label, address.recipient, address.phone, address.address, address.city, address.state, address.postalCode], (err, result) => callback(err, result ? result.rows[0] : null));
+  }
+
+  function deleteAddress(userId, id, callback) {
+    query('DELETE FROM addresses WHERE user_id = $1 AND id = $2', [userId, id], err => callback(err));
+  }
+
+  function getCustomerOrders(userId, callback) {
+    query('SELECT * FROM orders WHERE user_id = $1 ORDER BY paid_at DESC', [userId], (err, result) => callback(err, result ? result.rows : null));
   }
 
   module.exports = {
@@ -189,6 +218,10 @@ if (DATABASE_URL) {
     ,addPaidOrder
     ,getOrders
     ,updateOrderStatus
+    ,getAddresses
+    ,addAddress
+    ,deleteAddress
+    ,getCustomerOrders
   };
   return;
 }
@@ -257,6 +290,12 @@ function initDatabase() {
       updated_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
+  db.run(`CREATE TABLE IF NOT EXISTS addresses (
+    id INTEGER PRIMARY KEY AUTOINCREMENT, user_id TEXT NOT NULL, label TEXT NOT NULL,
+    recipient TEXT NOT NULL, phone TEXT NOT NULL, address TEXT NOT NULL, city TEXT NOT NULL,
+    state TEXT NOT NULL, postal_code TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+  )`);
+  db.run('ALTER TABLE orders ADD COLUMN user_id TEXT', () => {});
 
   // Migración: agregar columna 'image_data' si falta (bases de datos antiguas)
   db.run('ALTER TABLE products ADD COLUMN image_data LONGTEXT', () => {});
@@ -404,9 +443,9 @@ function deleteImage(id, callback) {
 
 function addPaidOrder(order, callback) {
   db.run(
-    `INSERT OR IGNORE INTO orders (ticket_number, stripe_session_id, stripe_event_id, customer_name, customer_email, customer_phone, delivery_address, items, total, status)
-     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, 'en_proceso')`,
-    [order.ticketNumber, order.sessionId, order.eventId, order.name, order.email, order.phone, order.address, JSON.stringify(order.items), order.total],
+    `INSERT OR IGNORE INTO orders (ticket_number, stripe_session_id, stripe_event_id, user_id, customer_name, customer_email, customer_phone, delivery_address, items, total, status)
+     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'en_proceso')`,
+    [order.ticketNumber, order.sessionId, order.eventId, order.userId || null, order.name, order.email, order.phone, order.address, JSON.stringify(order.items), order.total],
     function(err) { callback(err, err || !this.changes ? null : { id: this.lastID, ticket_number: order.ticketNumber }); }
   );
 }
@@ -426,6 +465,22 @@ function updateOrderStatus(id, status, callback) {
   db.run('UPDATE orders SET status = ?, updated_at = CURRENT_TIMESTAMP WHERE id = ?', [status, id], callback);
 }
 
+function getAddresses(userId, callback) {
+  db.all('SELECT id, label, recipient, phone, address, city, state, postal_code, created_at FROM addresses WHERE user_id = ? ORDER BY created_at DESC', [userId], callback);
+}
+
+function addAddress(userId, address, callback) {
+  db.run('INSERT INTO addresses (user_id, label, recipient, phone, address, city, state, postal_code) VALUES (?, ?, ?, ?, ?, ?, ?, ?)', [userId, address.label, address.recipient, address.phone, address.address, address.city, address.state, address.postalCode], function(err) { callback(err, err ? null : { id: this.lastID }); });
+}
+
+function deleteAddress(userId, id, callback) {
+  db.run('DELETE FROM addresses WHERE user_id = ? AND id = ?', [userId, id], callback);
+}
+
+function getCustomerOrders(userId, callback) {
+  db.all('SELECT * FROM orders WHERE user_id = ? ORDER BY paid_at DESC', [userId], callback);
+}
+
 module.exports = {
   db,
   ready: Promise.resolve(),
@@ -442,4 +497,8 @@ module.exports = {
   ,addPaidOrder
   ,getOrders
   ,updateOrderStatus
+  ,getAddresses
+  ,addAddress
+  ,deleteAddress
+  ,getCustomerOrders
 };

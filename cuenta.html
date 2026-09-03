@@ -1,0 +1,46 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Mi cuenta - Portones Eléctricos Omar</title>
+  <link rel="manifest" href="/manifest.json?v=6">
+  <link rel="apple-touch-icon" href="/logo.png?v=6">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@500;600;700;800&family=Manrope:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css?v=6">
+</head>
+<body>
+  <header class="site-header">
+    <div class="container header-inner">
+      <a class="brand" href="index.html">
+        <img src="logo.png?v=6" alt="Portones Eléctricos Omar" class="logo">
+        <span class="site-title"><h1>Portones Eléctricos Omar</h1><span class="tag">Reparación e instalación profesional</span></span>
+      </a>
+      <nav class="main-nav">
+        <a href="index.html">Inicio</a><a href="productos.html">Productos</a><a href="galeria.html">Galería</a><a href="index.html#contacto">Contacto</a>
+      </nav>
+    </div>
+  </header>
+  <main class="container account-main">
+    <section id="accountAuth" class="account-auth">
+      <div class="section-heading"><h2>Mi cuenta</h2><p>Guarda tus direcciones y consulta tus compras pagadas.</p></div>
+      <div class="account-auth-grid">
+        <form id="accountLoginForm" class="account-form"><h3>Iniciar sesión</h3><label for="loginEmail">Correo electrónico</label><input id="loginEmail" type="email" required><label for="loginPassword">Contraseña</label><input id="loginPassword" type="password" minlength="8" required><button class="btn btn-primary" type="submit">Entrar</button></form>
+        <form id="accountSignupForm" class="account-form"><h3>Crear cuenta</h3><label for="signupName">Nombre</label><input id="signupName" required><label for="signupEmail">Correo electrónico</label><input id="signupEmail" type="email" required><label for="signupPassword">Contraseña</label><input id="signupPassword" type="password" minlength="8" required><button class="btn btn-outline-accent" type="submit">Registrarme</button></form>
+      </div>
+    </section>
+    <section id="accountDashboard" class="account-dashboard" hidden>
+      <div class="account-dashboard-header"><div><p class="account-kicker">Cuenta activa</p><h2 id="accountGreeting">Mi cuenta</h2></div><button id="accountLogoutBtn" class="btn btn-outline-accent" type="button">Cerrar sesión</button></div>
+      <div class="account-grid">
+        <section class="account-panel"><div class="account-panel-heading"><h3>Mis direcciones</h3><button id="addAddressBtn" class="btn btn-primary" type="button">Agregar</button></div><div id="addressesList"></div><form id="addressForm" class="account-form" hidden><h4>Nueva dirección</h4><input id="addressLabel" placeholder="Etiqueta, por ejemplo Casa" required><input id="addressRecipient" placeholder="Quién recibe" required><input id="addressPhone" type="tel" placeholder="Teléfono" required><input id="addressStreet" placeholder="Calle y número" required><input id="addressCity" placeholder="Ciudad" required><input id="addressState" placeholder="Estado" required><input id="addressPostalCode" inputmode="numeric" placeholder="Código postal" required><div class="account-form-actions"><button class="btn btn-primary" type="submit">Guardar dirección</button><button id="cancelAddressBtn" class="btn btn-outline-accent" type="button">Cancelar</button></div></form></section>
+        <section class="account-panel"><h3>Mis compras</h3><p class="account-helper">Tus tickets aparecen después de que Stripe confirma el pago.</p><div id="customerOrdersList"></div></section>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer"><div class="container footer-inner"><div class="footer-brand"><h4>Portones Eléctricos Omar</h4><p>Instalación profesional de portones y venta de refacciones.</p></div><div class="footer-bottom"><p>&copy; <span id="year"></span> Portones Eléctricos Omar</p><a class="admin-btn" href="index.html">Volver al inicio</a></div></div></footer>
+  <div id="toastContainer" class="toast-container" aria-live="polite"></div>
+  <script src="script.js?v=6"></script>
+</body>
+</html>
