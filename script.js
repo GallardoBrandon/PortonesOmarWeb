@@ -13,7 +13,7 @@ function escapeHtml(value) {
 // Registrar el service worker para que el sitio se pueda instalar como PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=8').catch((err) => console.error('Error registrando service worker:', err));
+    navigator.serviceWorker.register('/sw.js?v=9').catch((err) => console.error('Error registrando service worker:', err));
   });
 }
 
@@ -73,11 +73,11 @@ async function loadViews() {
   
   try {
     // Cargar vista cliente
-    const clientRes = await fetch('cliente.html?v=8');
+    const clientRes = await fetch('cliente.html?v=9');
     const clientHTML = await clientRes.text();
     
     // Cargar vista admin
-    const adminRes = await fetch('admin.html?v=8');
+    const adminRes = await fetch('admin.html?v=9');
     const adminHTML = await adminRes.text();
     
     // Insertar ambas vistas en el contenedor app
@@ -591,6 +591,76 @@ function initializeApp() {
   // Contact Form - Guardar en BD
   const contactForm = document.getElementById('contactForm');
   if(contactForm){
+    const preferredDateInput = contactForm.preferredDate;
+    const preferredTimeSelect = contactForm.preferredTime;
+    const todayISO = new Date().toISOString().split('T')[0];
+    const appointmentTimeSlots = Array.from({ length: 20 }, (_, index) => {
+      const totalMinutes = (9 * 60) + (index * 30);
+      const hours = String(Math.floor(totalMinutes / 60)).padStart(2, '0');
+      const minutes = String(totalMinutes % 60).padStart(2, '0');
+      return `${hours}:${minutes}`;
+    });
+
+    function formatTime12(value) {
+      const [hours, minutes] = value.split(':').map(Number);
+      const suffix = hours >= 12 ? 'PM' : 'AM';
+      const normalizedHours = ((hours + 11) % 12) + 1;
+      return `${normalizedHours}:${String(minutes).padStart(2, '0')} ${suffix}`;
+    }
+
+    function updatePreferredTimeOptions(dateValue) {
+      if (!preferredTimeSelect) return;
+
+      if (!dateValue) {
+        preferredTimeSelect.innerHTML = '<option value="">Selecciona una fecha primero</option>';
+        preferredTimeSelect.disabled = true;
+        return;
+      }
+
+      preferredTimeSelect.disabled = true;
+      preferredTimeSelect.innerHTML = '<option value="">Cargando horarios...</option>';
+
+      fetch(`${API_URL}/customers/availability?date=${encodeURIComponent(dateValue)}`)
+        .then(res => res.json())
+        .then(data => {
+          const availableSlots = (data.availableTimes || []).filter(slot => appointmentTimeSlots.includes(slot));
+
+          if (availableSlots.length === 0) {
+            preferredTimeSelect.innerHTML = '<option value="">No hay horarios disponibles en esa fecha</option>';
+            preferredTimeSelect.disabled = true;
+            return;
+          }
+
+          preferredTimeSelect.innerHTML = '<option value="">Selecciona una hora disponible</option>';
+          availableSlots.forEach(slot => {
+            const option = document.createElement('option');
+            option.value = slot;
+            option.textContent = formatTime12(slot);
+            preferredTimeSelect.appendChild(option);
+          });
+          preferredTimeSelect.disabled = false;
+        })
+        .catch(err => {
+          console.error('Error cargando horarios:', err);
+          preferredTimeSelect.innerHTML = '<option value="">No se pudieron cargar los horarios</option>';
+          preferredTimeSelect.disabled = true;
+        });
+    }
+
+    if (preferredDateInput) {
+      preferredDateInput.min = todayISO;
+      preferredDateInput.addEventListener('input', function() {
+        updatePreferredTimeOptions(this.value);
+      });
+      preferredDateInput.addEventListener('change', function() {
+        updatePreferredTimeOptions(this.value);
+      });
+    }
+
+    if (preferredDateInput && preferredDateInput.value) {
+      updatePreferredTimeOptions(preferredDateInput.value);
+    }
+
     contactForm.addEventListener('submit', function(e){
       e.preventDefault();
       const name = contactForm.name.value.trim();
@@ -603,8 +673,13 @@ function initializeApp() {
       const referenceInput = document.getElementById('referenceImage');
       const referenceImage = referenceInput && referenceInput.files && referenceInput.files[0] ? referenceInput.files[0] : null;
 
-      if(!name || !email || !phone || !service || !preferredDate){
-        showToast('Por favor completa nombre, servicio, fecha y teléfono.', 'error');
+      if(!name || !email || !phone || !service || !preferredDate || !preferredTime){
+        showToast('Por favor completa nombre, servicio, fecha, hora y teléfono.', 'error');
+        return;
+      }
+
+      if (!appointmentTimeSlots.includes(preferredTime)) {
+        showToast('Selecciona un horario disponible entre las 9:00 y las 18:30, en intervalos de 30 minutos.', 'error');
         return;
       }
 

@@ -3,7 +3,7 @@
   <header class="site-header">
     <div class="container header-inner">
       <div class="brand">
-        <img src="logo.png?v=8" alt="Portones Omar - Logo" class="logo">
+        <img src="logo.png?v=9" alt="Portones Omar - Logo" class="logo">
         <div class="site-title">
           <h1>Portones Eléctricos Omar</h1>
           <p class="tag">Reparación e instalación profesional</p>
@@ -33,7 +33,7 @@
 
   <section class="hero">
     <div class="container hero-inner">
-      <img src="logo.png?v=8" alt="Portones Eléctricos Omar" class="hero-logo-mark">
+      <img src="logo.png?v=9" alt="Portones Eléctricos Omar" class="hero-logo-mark">
       <span class="hero-badge">Técnico especializado</span>
       <h2>Tu acceso, siempre seguro y en movimiento.</h2>
       <p>Reparación e instalación de portones residenciales e industriales, además de refacciones confiables para cada proyecto.</p>
@@ -98,6 +98,11 @@
         <h4>Instalación de resortes</h4>
         <p>Colocación y ajuste de resortes para mejorar el equilibrio y la vida útil del portón.</p>
       </article>
+      <article class="service-card">
+        <span class="service-icon">🧩</span>
+        <h4>Venta de refacciones</h4>
+        <p>Refacciones y accesorios para portones, incluyendo bisagras, llantas, carrito de motor, poleas y cables para polea.</p>
+      </article>
     </div>
   </section>
 
@@ -116,13 +121,17 @@
           <option value="Motor">Motor</option>
           <option value="Mantenimiento">Mantenimiento</option>
           <option value="Instalación de resortes">Instalación de resortes</option>
+          <option value="Venta de refacciones">Venta de refacciones</option>
         </select>
 
         <label for="preferredDate">Fecha preferida</label>
         <input id="preferredDate" name="preferredDate" type="date" required>
 
         <label for="preferredTime">Hora preferida</label>
-        <input id="preferredTime" name="preferredTime" type="time">
+        <select id="preferredTime" name="preferredTime" required>
+          <option value="">Selecciona una fecha primero</option>
+        </select>
+        <small class="field-hint">Horarios disponibles: 9:00 a 18:30, en intervalos de 30 minutos.</small>
 
         <label for="name">Nombre</label>
         <input id="name" name="name" required>
@@ -144,7 +153,7 @@
       <aside class="contact-info">
         <h4>Información de contacto</h4>
         <p><strong>WhatsApp:</strong> <a href="https://wa.me/526671034487" target="_blank" rel="noopener">+52 667 103 4487</a></p>
-        <p><strong>Email:</strong> <a href="mailto:contacto@portones.com">contacto@portones.com</a></p>
+        <p><strong>Email:</strong> <a href="mailto:omargaga@gmail.com">omargaga@gmail.com</a></p>
         <p>Atención rápida lunes a domingo para ayudarte con tu cita o requerimiento técnico.</p>
       </aside>
     </div>
@@ -159,7 +168,7 @@
       </div>
       <div class="footer-contact">
         <p>WhatsApp: <a href="https://wa.me/526671034487" target="_blank" rel="noopener">+52 667 103 4487</a></p>
-        <p>Email: <a href="mailto:contacto@portones.com">contacto@portones.com</a></p>
+        <p>Email: <a href="mailto:omargaga@gmail.com">omargaga@gmail.com</a></p>
       </div>
       <div class="footer-bottom">
         <p>&copy; <span id="year"></span> Portones Eléctricos Omar. Todos los derechos reservados.</p>
