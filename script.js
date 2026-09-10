@@ -13,7 +13,7 @@ function escapeHtml(value) {
 // Registrar el service worker para que el sitio se pueda instalar como PWA
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js?v=6').catch((err) => console.error('Error registrando service worker:', err));
+    navigator.serviceWorker.register('/sw.js?v=8').catch((err) => console.error('Error registrando service worker:', err));
   });
 }
 
@@ -73,11 +73,11 @@ async function loadViews() {
   
   try {
     // Cargar vista cliente
-    const clientRes = await fetch('cliente.html?v=5');
+    const clientRes = await fetch('cliente.html?v=8');
     const clientHTML = await clientRes.text();
     
     // Cargar vista admin
-    const adminRes = await fetch('admin.html?v=5');
+    const adminRes = await fetch('admin.html?v=8');
     const adminHTML = await adminRes.text();
     
     // Insertar ambas vistas en el contenedor app
@@ -528,15 +528,6 @@ function loadProductDetail(container) {
 
       document.title = `${product.name} - Portones Eléctricos Omar`;
 
-      const variants = (product.variants || '').split(',').map(v => v.trim()).filter(Boolean);
-      const variantHtml = variants.length ? `
-          <div class="quantity-selector">
-            <label for="productVariant">Opción:</label>
-            <select id="productVariant">
-              ${variants.map(v => `<option value="${v}">${v}</option>`).join('')}
-            </select>
-          </div>` : '';
-
       wrap.innerHTML = `
         <div class="product-detail-image">
           ${renderProductImageHtml(product)}
@@ -544,53 +535,17 @@ function loadProductDetail(container) {
         <div class="product-detail-info">
           <h2>${product.name}</h2>
           <p class="product-detail-description">${product.description || 'Sin descripción disponible.'}</p>
-          <p class="product-detail-unit-price">Precio por pieza: <strong>$${Number(product.price).toFixed(2)}</strong></p>
-${variantHtml}
-          <div class="quantity-selector">
-            <label for="productQuantity">Cantidad de piezas:</label>
-            <div class="quantity-controls">
-              <button type="button" id="qtyMinus" aria-label="Restar">-</button>
-              <input type="number" id="productQuantity" value="1" min="1" step="1">
-              <button type="button" id="qtyPlus" aria-label="Sumar">+</button>
-            </div>
-          </div>
-
-          <p class="product-detail-total">Total: <strong id="productTotalPrice">$${Number(product.price).toFixed(2)}</strong></p>
+          <p class="product-detail-unit-price">Servicio disponible para agendar una cita con asesoría personalizada.</p>
 
           <div class="product-buy-actions">
-            <button type="button" id="addToCartBtn" class="btn btn-primary buy-btn">Agregar al carrito</button>
+            <button type="button" id="requestQuoteBtn" class="btn btn-primary buy-btn">Solicitar cita</button>
           </div>
         </div>
       `;
 
-      const qtyInput = wrap.querySelector('#productQuantity');
-      const totalEl = wrap.querySelector('#productTotalPrice');
-      const variantSelect = wrap.querySelector('#productVariant');
-
-      function updateTotal() {
-        let qty = parseInt(qtyInput.value, 10);
-        if (!qty || qty < 1) qty = 1;
-        qtyInput.value = qty;
-        totalEl.textContent = `$${(Number(product.price) * qty).toFixed(2)}`;
-      }
-
-      wrap.querySelector('#addToCartBtn').addEventListener('click', () => {
-        const qty = parseInt(qtyInput.value, 10) || 1;
-        addToCart(product, qty, variantSelect ? variantSelect.value : null);
-        showToast('Producto agregado al carrito', 'success');
+      wrap.querySelector('#requestQuoteBtn').addEventListener('click', () => {
+        window.location.href = 'index.html#contacto';
       });
-
-      wrap.querySelector('#qtyMinus').addEventListener('click', () => {
-        qtyInput.value = Math.max(1, (parseInt(qtyInput.value, 10) || 1) - 1);
-        updateTotal();
-      });
-      wrap.querySelector('#qtyPlus').addEventListener('click', () => {
-        qtyInput.value = (parseInt(qtyInput.value, 10) || 1) + 1;
-        updateTotal();
-      });
-      qtyInput.addEventListener('input', updateTotal);
-
-      updateTotal();
     })
     .catch(err => {
       wrap.innerHTML = '<p style="color:red;">Error al cargar el producto</p>';
@@ -641,43 +596,66 @@ function initializeApp() {
       const name = contactForm.name.value.trim();
       const email = contactForm.email.value.trim();
       const phone = contactForm.phone ? contactForm.phone.value.trim() : '';
-      const message = contactForm.message.value.trim();
-      if(!name || !email || !message){
-        showToast('Por favor completa los campos requeridos.', 'error');
+      const message = contactForm.message ? contactForm.message.value.trim() : '';
+      const service = contactForm.service ? contactForm.service.value.trim() : '';
+      const preferredDate = contactForm.preferredDate ? contactForm.preferredDate.value.trim() : '';
+      const preferredTime = contactForm.preferredTime ? contactForm.preferredTime.value.trim() : '';
+      const referenceInput = document.getElementById('referenceImage');
+      const referenceImage = referenceInput && referenceInput.files && referenceInput.files[0] ? referenceInput.files[0] : null;
+
+      if(!name || !email || !phone || !service || !preferredDate){
+        showToast('Por favor completa nombre, servicio, fecha y teléfono.', 'error');
         return;
       }
 
-      // Guardar en la BD
-      fetch(`${API_URL}/customers`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name, email, phone, message })
-      })
-      .then(res => res.json())
-      .then(data => {
-        if(data.success){
-          showToast('¡Mensaje enviado! Abriendo WhatsApp para confirmar tu solicitud...', 'success');
-          const whatsappNumber = '526671034487';
-          const lines = [
-            '🔔 *Nuevo contacto desde la web*',
-            '',
-            `👤 Nombre: ${name}`,
-            `📧 Email: ${email}`
-          ];
-          if (phone) lines.push(`📱 Teléfono: ${phone}`);
-          lines.push('', `📝 Mensaje: ${message}`);
-          const text = lines.join('\n');
-          const waUrl = `https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`;
-          setTimeout(() => window.open(waUrl, '_blank'), 600);
-          contactForm.reset();
-        } else {
-          showToast('No se pudo enviar el mensaje. Intenta de nuevo.', 'error');
-        }
-      })
-      .catch(err => {
-        console.error('Error:', err);
-        showToast('Ocurrió un error al enviar tu mensaje. Intenta de nuevo.', 'error');
-      });
+      const submitAppointment = (imageData) => {
+        fetch(`${API_URL}/customers`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name, email, phone, message, service, preferredDate, preferredTime, referenceImage: imageData || null })
+        })
+        .then(res => res.json())
+        .then(data => {
+          if(data.success){
+            showToast('¡Cita solicitada con éxito! Te contactaremos pronto.', 'success');
+            const whatsappNumber = '526671034487';
+            const lines = [
+              '📅 *Nueva cita desde la web*',
+              '',
+              `👤 Nombre: ${name}`,
+              `📧 Email: ${email}`,
+              `📱 Teléfono: ${phone}`,
+              `🛠️ Servicio: ${service}`,
+              `📆 Fecha preferida: ${preferredDate}`
+            ];
+            if (preferredTime) lines.push(`⏰ Hora preferida: ${preferredTime}`);
+            if (message) lines.push('', `📝 Detalles: ${message}`);
+            const text = lines.join('\n');
+            setTimeout(() => window.open(`https://wa.me/${whatsappNumber}?text=${encodeURIComponent(text)}`, '_blank'), 600);
+            contactForm.reset();
+            if (referenceInput) referenceInput.value = '';
+          } else {
+            showToast(data.error || 'No se pudo registrar la cita. Intenta de nuevo.', 'error');
+          }
+        })
+        .catch(err => {
+          console.error('Error:', err);
+          showToast('Ocurrió un error al enviar tu cita. Intenta de nuevo.', 'error');
+        });
+      };
+
+      if (referenceImage) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          submitAppointment(e.target.result);
+        };
+        reader.onerror = function() {
+          submitAppointment(null);
+        };
+        reader.readAsDataURL(referenceImage);
+      } else {
+        submitAppointment(null);
+      }
     });
   }
 
@@ -908,48 +886,141 @@ function initializeApp() {
     });
   }
 
-  function renderOrders(container, orders, completed) {
+  let allAppointments = [];
+
+  function renderAppointmentSummary(customers) {
+    const summaryContainer = document.getElementById('appointmentsSummary');
+    if (!summaryContainer) return;
+
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const total = customers.length;
+    const pending = customers.filter(item => (item.status || 'pendiente') !== 'confirmada').length;
+    const confirmed = customers.filter(item => (item.status || 'pendiente') === 'confirmada').length;
+    const upcoming = customers.filter(item => {
+      if (!item.preferred_date) return false;
+      const date = new Date(`${item.preferred_date}T00:00:00`);
+      return date >= today;
+    }).length;
+
+    summaryContainer.innerHTML = `
+      <div class="summary-card">
+        <span class="summary-label">Total</span>
+        <strong>${total}</strong>
+      </div>
+      <div class="summary-card warning">
+        <span class="summary-label">Pendientes</span>
+        <strong>${pending}</strong>
+      </div>
+      <div class="summary-card success">
+        <span class="summary-label">Confirmadas</span>
+        <strong>${confirmed}</strong>
+      </div>
+      <div class="summary-card info">
+        <span class="summary-label">Próximas</span>
+        <strong>${upcoming}</strong>
+      </div>
+    `;
+  }
+
+  function matchesAppointmentFilters(appointment, searchTerm, statusFilter) {
+    const search = searchTerm.trim().toLowerCase();
+    const appointmentStatus = appointment.status || 'pendiente';
+
+    const textFields = [
+      appointment.name,
+      appointment.email,
+      appointment.phone,
+      appointment.service,
+      appointment.message,
+      appointment.preferred_date,
+      appointment.preferred_time,
+    ].filter(Boolean).join(' ').toLowerCase();
+
+    const statusMatches = statusFilter === 'all' || appointmentStatus === statusFilter;
+    const searchMatches = !search || textFields.includes(search);
+
+    return statusMatches && searchMatches;
+  }
+
+  function renderAppointments(container, appointments, confirmed) {
     if (!container) return;
-    if (!orders || orders.length === 0) {
-      container.innerHTML = '<p class="admin-helper-text">No hay pedidos en esta sección.</p>';
+    if (!appointments || appointments.length === 0) {
+      container.innerHTML = '<p class="admin-helper-text">No hay citas en esta sección.</p>';
       return;
     }
-    container.innerHTML = orders.map(order => {
-      let items = [];
-      try { items = typeof order.items === 'string' ? JSON.parse(order.items) : (order.items || []); } catch (error) { items = []; }
-      const itemText = items.map(item => `${escapeHtml(item.name || `Producto ${item.id}`)}${item.variant ? ` (${escapeHtml(item.variant)})` : ''} x${item.quantity}`).join('<br>');
-      return `<article class="order-card${completed ? ' completed' : ''}">
-        <div class="order-card-header"><strong class="order-ticket">${escapeHtml(order.ticket_number)}</strong><time class="order-date">${new Date(order.paid_at).toLocaleString('es-MX')}</time></div>
-        <p class="order-customer"><strong>${escapeHtml(order.customer_name)}</strong><br>${escapeHtml(order.customer_email)} · ${escapeHtml(order.customer_phone)}</p>
-        <p class="order-address"><strong>Entrega:</strong> ${escapeHtml(order.delivery_address)}</p>
-        <div class="order-items">${itemText || '<span>Detalle no disponible</span>'}</div>
-        <p class="order-total">$${Number(order.total).toFixed(2)} MXN</p>
-        ${completed ? '' : `<button type="button" class="btn btn-primary mark-order-done" data-id="${escapeHtml(order.id)}">Marcar como realizado</button>`}
+
+    container.innerHTML = appointments.map(appointment => {
+      const statusLabel = confirmed ? 'Confirmada' : 'Pendiente';
+      const preferredDate = appointment.preferred_date ? new Date(`${appointment.preferred_date}T00:00:00`).toLocaleDateString('es-MX', { day: '2-digit', month: '2-digit', year: 'numeric' }) : 'Sin fecha';
+      const preferredTime = appointment.preferred_time || 'Sin hora';
+      return `<article class="order-card${confirmed ? ' completed' : ''}">
+        <div class="order-card-header">
+          <strong class="order-ticket">${escapeHtml(appointment.service || 'Servicio sin definir')}</strong>
+          <time class="order-date">${statusLabel}</time>
+        </div>
+        <p class="order-customer"><strong>${escapeHtml(appointment.name)}</strong><br>${escapeHtml(appointment.email)} · ${escapeHtml(appointment.phone)}</p>
+        <p class="order-address"><strong>Fecha:</strong> ${escapeHtml(preferredDate)}<br><strong>Hora:</strong> ${escapeHtml(preferredTime)}</p>
+        <div class="order-items">${escapeHtml(appointment.message || 'Sin detalles adicionales')}</div>
+        ${appointment.reference_image ? `<div class="order-reference-image"><img src="${appointment.reference_image}" alt="Foto de referencia de cita"></div>` : ''}
+        ${confirmed ? '' : `<button type="button" class="btn btn-primary mark-order-done" data-id="${escapeHtml(appointment.id)}">Confirmar cita</button>`}
       </article>`;
     }).join('');
+
     container.querySelectorAll('.mark-order-done').forEach(button => {
       button.addEventListener('click', () => {
-        fetchWithAuth(`${API_URL}/orders/${button.dataset.id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'realizado' }) })
-          .then(response => { if (!response.ok) throw new Error('No se pudo actualizar el pedido.'); loadOrdersUI(); })
+        fetchWithAuth(`${API_URL}/customers/${button.dataset.id}/status`, { method: 'PUT', body: JSON.stringify({ status: 'confirmada' }) })
+          .then(response => { if (!response.ok) throw new Error('No se pudo confirmar la cita.'); loadOrdersUI(); })
           .catch(error => showToast(error.message, 'error'));
       });
     });
+  }
+
+  function applyAppointmentFilters() {
+    const searchInput = document.getElementById('appointmentSearchInput');
+    const statusFilter = document.getElementById('appointmentStatusFilter');
+
+    if (!searchInput || !statusFilter) return;
+
+    const searchTerm = searchInput.value;
+    const filter = statusFilter.value;
+
+    const filtered = allAppointments.filter(item => matchesAppointmentFilters(item, searchTerm, filter));
+    const pending = filtered.filter(item => (item.status || 'pendiente') !== 'confirmada');
+    const confirmed = filtered.filter(item => (item.status || 'pendiente') === 'confirmada');
+
+    const inProcess = document.getElementById('ordersInProcess');
+    const completed = document.getElementById('ordersCompleted');
+
+    renderAppointments(inProcess, pending, false);
+    renderAppointments(completed, confirmed, true);
   }
 
   function loadOrdersUI() {
     const inProcess = document.getElementById('ordersInProcess');
     const completed = document.getElementById('ordersCompleted');
     if (!inProcess || !completed) return;
-    inProcess.innerHTML = '<p class="admin-helper-text">Cargando pedidos...</p>';
-    completed.innerHTML = '<p class="admin-helper-text">Cargando pedidos...</p>';
-    Promise.all([
-      fetchWithAuth(`${API_URL}/orders?status=en_proceso`).then(response => response.ok ? response.json() : []),
-      fetchWithAuth(`${API_URL}/orders?status=realizado`).then(response => response.ok ? response.json() : [])
-    ]).then(([pending, done]) => { renderOrders(inProcess, Array.isArray(pending) ? pending : [], false); renderOrders(completed, Array.isArray(done) ? done : [], true); })
-      .catch(error => { inProcess.innerHTML = '<p style="color:red;">Error al cargar pedidos.</p>'; completed.innerHTML = '<p style="color:red;">Error al cargar pedidos.</p>'; console.error('Error cargando pedidos:', error); });
+    inProcess.innerHTML = '<p class="admin-helper-text">Cargando citas...</p>';
+    completed.innerHTML = '<p class="admin-helper-text">Cargando citas...</p>';
+
+    fetchWithAuth(`${API_URL}/customers`)
+      .then(response => response.ok ? response.json() : [])
+      .then(customers => {
+        allAppointments = Array.isArray(customers) ? customers : [];
+        renderAppointmentSummary(allAppointments);
+        applyAppointmentFilters();
+      })
+      .catch(error => {
+        inProcess.innerHTML = '<p style="color:red;">Error al cargar citas.</p>';
+        completed.innerHTML = '<p style="color:red;">Error al cargar citas.</p>';
+        console.error('Error cargando citas:', error);
+      });
   }
 
   document.getElementById('refreshOrdersBtn')?.addEventListener('click', loadOrdersUI);
+  document.getElementById('appointmentSearchInput')?.addEventListener('input', applyAppointmentFilters);
+  document.getElementById('appointmentStatusFilter')?.addEventListener('change', applyAppointmentFilters);
 
   const productSearchInput = document.getElementById('productSearchInput');
   if(productSearchInput){
@@ -1283,7 +1354,6 @@ function initStaticPage() {
 
 // Iniciar aplicación cuando el DOM esté listo
 document.addEventListener('DOMContentLoaded', function(){
-  initCartWidget();
   if (document.getElementById('app')) {
     loadViews();
   } else {

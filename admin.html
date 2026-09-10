@@ -10,7 +10,7 @@
   <main class="container admin-main">
     <div class="admin-tabs">
       <button class="tab-btn active" data-tab="prices">Productos</button>
-      <button class="tab-btn" data-tab="orders">Pedidos</button>
+      <button class="tab-btn" data-tab="orders">Citas</button>
       <button class="tab-btn" data-tab="images">Subir Imágenes</button>
     </div>
 
@@ -29,18 +29,30 @@
     <div id="ordersTab" class="tab-content">
       <div class="admin-section-header">
         <div>
-          <h3>Pedidos pagados</h3>
-          <p class="admin-helper-text">Los tickets aparecen aquí únicamente después de confirmar el pago.</p>
+          <h3>Citas solicitadas</h3>
+          <p class="admin-helper-text">Aquí aparecen las citas generadas por el cliente sin necesidad de cuenta.</p>
         </div>
         <button type="button" id="refreshOrdersBtn" class="btn-add-product">Actualizar</button>
       </div>
+
+      <div id="appointmentsSummary" class="appointments-summary"></div>
+
+      <div class="appointments-toolbar">
+        <input id="appointmentSearchInput" type="text" placeholder="Buscar por nombre, servicio o teléfono...">
+        <select id="appointmentStatusFilter">
+          <option value="all">Todas</option>
+          <option value="pendiente">Pendientes</option>
+          <option value="confirmada">Confirmadas</option>
+        </select>
+      </div>
+
       <div class="orders-columns">
         <section class="orders-column">
-          <h4>En proceso</h4>
+          <h4>Pendientes</h4>
           <div id="ordersInProcess" class="orders-list"></div>
         </section>
         <section class="orders-column">
-          <h4>Realizados</h4>
+          <h4>Confirmadas</h4>
           <div id="ordersCompleted" class="orders-list"></div>
         </section>
       </div>

@@ -27,6 +27,11 @@ if (DATABASE_URL) {
         email TEXT NOT NULL,
         phone TEXT,
         message TEXT,
+        service TEXT,
+        preferred_date TEXT,
+        preferred_time TEXT,
+        reference_image TEXT,
+        status TEXT DEFAULT 'pendiente',
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       CREATE TABLE IF NOT EXISTS products (
@@ -75,6 +80,11 @@ if (DATABASE_URL) {
         created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
       );
       ALTER TABLE orders ADD COLUMN IF NOT EXISTS user_id UUID;
+      ALTER TABLE customers ADD COLUMN IF NOT EXISTS service TEXT;
+      ALTER TABLE customers ADD COLUMN IF NOT EXISTS preferred_date TEXT;
+      ALTER TABLE customers ADD COLUMN IF NOT EXISTS preferred_time TEXT;
+      ALTER TABLE customers ADD COLUMN IF NOT EXISTS reference_image TEXT;
+      ALTER TABLE customers ADD COLUMN IF NOT EXISTS status TEXT DEFAULT 'pendiente';
     `).then(() => pool.query(`
       INSERT INTO products (name, price, description, featured)
       SELECT product.name, product.price, product.description, 1
@@ -97,16 +107,20 @@ if (DATABASE_URL) {
     });
   }
 
-  function addCustomer(name, email, phone, message, callback) {
+  function addCustomer(name, email, phone, message, service, preferredDate, preferredTime, referenceImage, callback) {
     query(
-      'INSERT INTO customers (name, email, phone, message) VALUES ($1, $2, $3, $4) RETURNING id',
-      [name, email, phone, message],
+      'INSERT INTO customers (name, email, phone, message, service, preferred_date, preferred_time, reference_image, status) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9) RETURNING id',
+      [name, email, phone, message, service || null, preferredDate || null, preferredTime || null, referenceImage || null, 'pendiente'],
       (err, result) => callback(err, result ? { id: result.rows[0].id } : null)
     );
   }
 
   function getCustomers(callback) {
     query('SELECT * FROM customers ORDER BY created_at DESC', [], (err, result) => callback(err, result ? result.rows : null));
+  }
+
+  function updateCustomerStatus(id, status, callback) {
+    query('UPDATE customers SET status = $1 WHERE id = $2', [status, id], err => callback(err));
   }
 
   function getProducts(featuredOnly, callback) {
@@ -207,6 +221,7 @@ if (DATABASE_URL) {
     ready,
     addCustomer,
     getCustomers,
+    updateCustomerStatus,
     getProducts,
     updateProduct,
     addProduct,
@@ -248,6 +263,11 @@ function initDatabase() {
       email TEXT NOT NULL,
       phone TEXT,
       message TEXT,
+      service TEXT,
+      preferred_date TEXT,
+      preferred_time TEXT,
+      reference_image TEXT,
+      status TEXT DEFAULT 'pendiente',
       created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )
   `);
@@ -296,6 +316,13 @@ function initDatabase() {
     state TEXT NOT NULL, postal_code TEXT NOT NULL, created_at DATETIME DEFAULT CURRENT_TIMESTAMP
   )`);
   db.run('ALTER TABLE orders ADD COLUMN user_id TEXT', () => {});
+  db.run('ALTER TABLE customers ADD COLUMN service TEXT', () => {});
+  db.run('ALTER TABLE customers ADD COLUMN preferred_date TEXT', () => {});
+  db.run('ALTER TABLE customers ADD COLUMN preferred_time TEXT', () => {});
+  db.run('ALTER TABLE customers ADD COLUMN reference_image TEXT', () => {});
+  db.run('ALTER TABLE customers ADD COLUMN status TEXT DEFAULT "pendiente"', () => {
+    db.run('UPDATE customers SET status = "pendiente" WHERE status IS NULL OR status = ""');
+  });
 
   // Migración: agregar columna 'image_data' si falta (bases de datos antiguas)
   db.run('ALTER TABLE products ADD COLUMN image_data LONGTEXT', () => {});
@@ -354,10 +381,10 @@ function initDatabase() {
 }
 
 // Funciones para clientes
-function addCustomer(name, email, phone, message, callback) {
+function addCustomer(name, email, phone, message, service, preferredDate, preferredTime, referenceImage, callback) {
   db.run(
-    'INSERT INTO customers (name, email, phone, message) VALUES (?, ?, ?, ?)',
-    [name, email, phone, message],
+    'INSERT INTO customers (name, email, phone, message, service, preferred_date, preferred_time, reference_image, status) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [name, email, phone, message || '', service || '', preferredDate || '', preferredTime || '', referenceImage || '', 'pendiente'],
     function(err) {
       if (err) {
         callback(err, null);
@@ -370,6 +397,10 @@ function addCustomer(name, email, phone, message, callback) {
 
 function getCustomers(callback) {
   db.all('SELECT * FROM customers ORDER BY created_at DESC', callback);
+}
+
+function updateCustomerStatus(id, status, callback) {
+  db.run('UPDATE customers SET status = ? WHERE id = ?', [status, id], callback);
 }
 
 // Funciones para productos
@@ -486,6 +517,7 @@ module.exports = {
   ready: Promise.resolve(),
   addCustomer,
   getCustomers,
+  updateCustomerStatus,
   getProducts,
   updateProduct,
   addProduct,

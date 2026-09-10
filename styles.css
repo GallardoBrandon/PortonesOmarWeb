@@ -103,6 +103,14 @@ main.container > section:last-child{margin-bottom:24px}
 .gallery img{width:100%;height:220px;object-fit:cover;display:block}
 .gallery figcaption{padding:12px 14px;font-weight:600;color:var(--navy);font-size:0.92rem}
 
+/* ===== Services ===== */
+.services-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:20px}
+.service-card{background:#fff;border:1px solid var(--card-border);border-radius:var(--radius);padding:24px;box-shadow:var(--shadow-sm);transition:box-shadow .2s ease, transform .2s ease}
+.service-card:hover{box-shadow:var(--shadow-md);transform:translateY(-3px)}
+.service-icon{display:inline-flex;align-items:center;justify-content:center;width:52px;height:52px;border-radius:14px;background:rgba(214,156,27,0.12);font-size:1.5rem;margin-bottom:14px}
+.service-card h4{margin:0 0 10px;font-size:1.2rem}
+.service-card p{margin:0;color:var(--muted);line-height:1.6}
+
 /* ===== Products ===== */
 .products .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:20px}
 .card{background:#fff;border:1px solid var(--card-border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--shadow-sm);transition:box-shadow .2s ease, transform .2s ease;display:block;color:inherit;text-decoration:none}
@@ -166,8 +174,8 @@ main.container > section:last-child{margin-bottom:24px}
 .contact-info p{color:#cbd5e1;font-size:0.92rem}
 
 /* ===== Forms (shared) ===== */
-input,textarea{padding:10px 12px;border:1px solid #d3d8e0;border-radius:8px;font-family:inherit;font-size:0.95rem}
-input:focus,textarea:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
+input,textarea,select{padding:10px 12px;border:1px solid #d3d8e0;border-radius:8px;font-family:inherit;font-size:0.95rem}
+input:focus,textarea:focus,select:focus{outline:2px solid var(--accent);outline-offset:1px;border-color:var(--accent)}
 button{font-family:inherit}
 
 /* ===== Footer ===== */
@@ -218,51 +226,9 @@ button{font-family:inherit}
 .close{color:#999;float:right;font-size:24px;cursor:pointer;line-height:1}
 .close:hover{color:#000}
 
-/* ===== Carrito de compras (botón flotante + modal) ===== */
-.cart-fab{
-  position:fixed;right:24px;bottom:24px;z-index:900;
-  width:56px;height:56px;border-radius:50%;border:none;
-  background:var(--accent);color:#fff;font-size:1.5rem;
-  display:flex;align-items:center;justify-content:center;
-  box-shadow:0 8px 20px rgba(232,135,30,0.4);cursor:pointer;
-}
-.cart-fab:hover{background:var(--accent-dark)}
-.cart-badge{
-  position:absolute;top:-4px;right:-4px;min-width:20px;height:20px;padding:0 4px;
-  background:#d92626;color:#fff;border-radius:999px;font-size:0.7rem;font-weight:700;
-  display:none;align-items:center;justify-content:center;line-height:1;
-}
-.cart-modal-content{max-width:520px;max-height:80vh;overflow-y:auto}
-.cart-item{
-  display:grid;grid-template-columns:1fr auto auto auto;gap:12px;align-items:center;
-  padding:10px 0;border-bottom:1px solid var(--card-border);
-}
-.cart-item-info{display:flex;flex-direction:column;gap:2px}
-.cart-item-name{font-weight:600;color:var(--navy)}
-.cart-item-price{color:var(--muted);font-size:0.85rem}
-.cart-item-controls{display:flex;align-items:center;gap:6px}
-.cart-item-controls button{
-  width:26px;height:26px;border-radius:6px;border:1px solid var(--card-border);
-  background:#f6f7f9;cursor:pointer;font-weight:700;
-}
-.cart-item-controls input{width:46px;text-align:center;padding:4px}
-.cart-item-subtotal{font-weight:700;color:var(--accent);white-space:nowrap}
-.cart-item-remove{background:none;border:none;color:#d92626;cursor:pointer;font-size:1rem}
-.cart-modal-footer{margin-top:16px;padding-top:12px;border-top:2px solid var(--card-border)}
-.cart-modal-total{font-size:1.15rem;margin:0 0 12px}
-.cart-modal-total strong{color:var(--accent)}
-.cart-modal-actions{display:flex;flex-direction:column;gap:8px}
-.cart-modal-actions .btn{text-align:center}
-.btn-text-danger{background:none;border:none;color:#d92626;cursor:pointer;font-weight:600;padding:6px}
-.btn-outline-accent{background:transparent;color:var(--accent);border-color:var(--accent)}
-.btn-outline-accent:hover{background:var(--accent);color:#fff}
+/* ===== Acciones de producto (ahora orientadas a agendar cita) ===== */
 .product-buy-actions{display:flex;gap:12px;flex-wrap:wrap}
 .product-buy-actions .btn{flex:1;min-width:180px}
-.checkout-form{display:grid;gap:12px;margin-bottom:4px;text-align:left}
-.checkout-form h3{font-size:1.35rem;text-transform:uppercase;margin:0}
-.checkout-form-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px}
-.checkout-form input{min-width:0}
-.checkout-form .btn{width:100%;border:0}
 
 .admin-header-main{background:linear-gradient(135deg, var(--navy) 0%, var(--navy-dark) 100%);color:#fff;padding:24px 0;border-bottom:3px solid var(--accent);box-shadow:0 2px 8px rgba(0,0,0,0.1)}
 .admin-header-main h1{margin:0;font-size:1.8rem;color:#fff}
@@ -334,8 +300,17 @@ button{font-family:inherit}
 .orders-column{min-width:0}
 .orders-column h4{margin:0 0 12px;font-size:1.45rem;text-transform:uppercase}
 .orders-list{display:grid;gap:12px}
-.order-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:8px;padding:16px;box-shadow:none}
-.order-card.completed{border-left-color:var(--success)}
+.order-card{background:#fff;border:1px solid var(--line);border-left:4px solid var(--gold);border-radius:12px;padding:16px;box-shadow:0 8px 20px rgba(23,25,27,0.05)}
+.order-card.completed{border-left-color:var(--success);background:linear-gradient(180deg, #ffffff 0%, #f1f8f5 100%)}
+.appointments-summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:14px;margin-bottom:18px}
+.summary-card{background:#fff;border:1px solid var(--line);border-radius:10px;padding:16px;box-shadow:0 6px 16px rgba(23,25,27,0.03)}
+.summary-card.warning{border-left:4px solid #c17b16}
+.summary-card.success{border-left:4px solid var(--success)}
+.summary-card.info{border-left:4px solid #1c7ad9}
+.summary-label{display:block;font-size:0.75rem;text-transform:uppercase;letter-spacing:0.06em;color:var(--muted);margin-bottom:8px}
+.summary-card strong{font-size:2rem;line-height:1;color:var(--ink)}
+.appointments-toolbar{display:flex;gap:12px;align-items:center;justify-content:space-between;margin-bottom:20px;flex-wrap:wrap}
+.appointments-toolbar input,.appointments-toolbar select{flex:1;min-width:180px}
 .order-card-header{display:flex;justify-content:space-between;gap:12px;align-items:start;margin-bottom:10px}
 .order-ticket{font-family:'Barlow Condensed',sans-serif;font-size:1.35rem;text-transform:uppercase}
 .order-date{color:var(--muted);font-size:.72rem;white-space:nowrap}
@@ -498,6 +473,11 @@ main.container > section{margin-bottom:80px}
 .hero-sub h2{font-size:2.8rem}
 
 .gallery .grid,.products .cards{gap:18px}
+.services-grid{gap:18px}
+.service-card{border-radius:8px;border-color:var(--line);box-shadow:none;background:var(--surface)}
+.service-card:hover{box-shadow:var(--shadow-md);border-color:#bebcb3}
+.service-icon{width:44px;height:44px;border-radius:10px;background:rgba(214,156,27,0.12)}
+.service-card h4{font-size:1.35rem;text-transform:uppercase}
 .gallery figure,.card{border-radius:8px;border-color:var(--line);box-shadow:none;background:var(--surface)}
 .gallery figure:hover,.card:hover{transform:translateY(-4px);box-shadow:var(--shadow-md);border-color:#bebcb3}
 .gallery img{height:245px;filter:saturate(.93)}
@@ -514,8 +494,8 @@ main.container > section{margin-bottom:80px}
 .contact-grid{gap:20px}
 .contact-form{padding:28px;border-radius:8px;border-color:var(--line);box-shadow:none}
 .contact-form label,.quantity-selector label{font-size:.76rem;text-transform:uppercase;letter-spacing:0}
-input,textarea,.quantity-selector select{border-radius:4px;border-color:#c8c9c4;padding:12px;background:#fff;font-family:'Manrope',sans-serif;font-size:.88rem}
-input:focus,textarea:focus,.quantity-selector select:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold)}
+input,textarea,select,.quantity-selector select{border-radius:4px;border-color:#c8c9c4;padding:12px;background:#fff;font-family:'Manrope',sans-serif;font-size:.88rem}
+input:focus,textarea:focus,select:focus,.quantity-selector select:focus{outline:2px solid var(--gold);outline-offset:1px;border-color:var(--gold)}
 .contact-info{border-radius:8px;background:var(--ink);box-shadow:none;border-top:4px solid var(--gold)}
 .contact-info h4{font-size:1.55rem;text-transform:uppercase}
 .contact-info p{line-height:1.7}
@@ -589,11 +569,6 @@ input:focus,textarea:focus,.quantity-selector select:focus{outline:2px solid var
   .contact-form{padding:20px}
   .product-detail{padding:16px;gap:26px}
   .product-detail-info h2{font-size:2.25rem}
-  .cart-item{grid-template-columns:1fr auto;gap:8px}
-  .cart-item-controls{grid-column:1 / 2}
-  .cart-item-subtotal{grid-column:2 / 3;grid-row:2}
-  .cart-item-remove{grid-column:2 / 3;grid-row:1}
-  .checkout-form-grid{grid-template-columns:1fr}
   .orders-columns{grid-template-columns:1fr}
   .account-auth-grid,.account-grid{grid-template-columns:1fr}
   .account-dashboard-header{align-items:flex-start;gap:12px;flex-direction:column}

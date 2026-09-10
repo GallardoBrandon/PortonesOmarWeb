@@ -199,13 +199,13 @@ app.post('/api/logout', (req, res) => {
 
 // ===== RUTAS DE CLIENTES =====
 app.post('/api/customers', (req, res) => {
-  const { name, email, phone, message } = req.body;
-  
-  if (!name || !email || !message) {
-    return res.status(400).json({ error: 'Campos requeridos: name, email, message' });
+  const { name, email, phone, message, service, preferredDate, preferredTime, referenceImage } = req.body;
+
+  if (!name || !email || !phone || !service || !preferredDate) {
+    return res.status(400).json({ error: 'Campos requeridos: name, email, phone, service y fecha preferida.' });
   }
 
-  db.addCustomer(name, email, phone || '', message, (err, result) => {
+  db.addCustomer(name, email, phone || '', message || '', service, preferredDate, preferredTime, referenceImage || null, (err, result) => {
     if (err) {
       res.status(500).json({ error: err.message });
     } else {
@@ -220,6 +220,22 @@ app.get('/api/customers', verifyToken, (req, res) => {
       res.status(500).json({ error: err.message });
     } else {
       res.json(rows || []);
+    }
+  });
+});
+
+app.put('/api/customers/:id/status', verifyToken, (req, res) => {
+  const { status } = req.body;
+
+  if (!['pendiente', 'confirmada'].includes(status)) {
+    return res.status(400).json({ error: 'Estado de cita inválido.' });
+  }
+
+  db.updateCustomerStatus(req.params.id, status, (err) => {
+    if (err) {
+      res.status(500).json({ error: err.message });
+    } else {
+      res.json({ success: true });
     }
   });
 });

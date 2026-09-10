@@ -3,7 +3,7 @@
   <header class="site-header">
     <div class="container header-inner">
       <div class="brand">
-        <img src="logo.png?v=6" alt="Portones Omar - Logo" class="logo">
+        <img src="logo.png?v=8" alt="Portones Omar - Logo" class="logo">
         <div class="site-title">
           <h1>Portones Eléctricos Omar</h1>
           <p class="tag">Reparación e instalación profesional</p>
@@ -11,10 +11,9 @@
       </div>
       <nav class="main-nav">
         <a href="index.html">Inicio</a>
-        <a href="cuenta.html">Mi cuenta</a>
         <a href="galeria.html">Galería</a>
-        <a href="productos.html">Productos</a>
-        <a href="#contacto">Contacto</a>
+        <a href="#servicios">Servicios</a>
+        <a href="#contacto">Agenda tu cita</a>
         <a href="https://wa.me/526671034487" target="_blank" rel="noopener" class="nav-cta">WhatsApp</a>
       </nav>
     </div>
@@ -34,13 +33,13 @@
 
   <section class="hero">
     <div class="container hero-inner">
-      <img src="logo.png?v=6" alt="Portones Eléctricos Omar" class="hero-logo-mark">
+      <img src="logo.png?v=8" alt="Portones Eléctricos Omar" class="hero-logo-mark">
       <span class="hero-badge">Técnico especializado</span>
       <h2>Tu acceso, siempre seguro y en movimiento.</h2>
       <p>Reparación e instalación de portones residenciales e industriales, además de refacciones confiables para cada proyecto.</p>
       <div class="hero-actions">
-        <a href="productos.html" class="btn btn-primary">Ver productos</a>
-        <a href="#contacto" class="btn btn-outline">Solicitar cotización</a>
+        <a href="#servicios" class="btn btn-primary">Ver servicios</a>
+        <a href="#contacto" class="btn btn-outline">Solicitar cita</a>
       </div>
     </div>
   </section>
@@ -68,26 +67,63 @@
     </div>
   </section>
 
-  <section id="productos" class="products">
+  <section id="servicios" class="services">
     <div class="section-heading">
-      <h3>Productos más vendidos</h3>
-      <p>Una selección de nuestros productos con mejor demanda.</p>
+      <h3>Servicios</h3>
+      <p>Encuentra la solución que necesitas para tu portón, desde instalación completa hasta mantenimiento preventivo.</p>
     </div>
-    <div class="cards" id="featuredProductsGrid">
-      <p>Cargando productos...</p>
-    </div>
-    <div class="section-actions">
-      <a href="productos.html" class="btn btn-outline">Ver catálogo completo</a>
+    <div class="services-grid">
+      <article class="service-card">
+        <span class="service-icon">🚪</span>
+        <h4>Instalación de portón completo</h4>
+        <p>Instalación profesional de portones nuevos, con ajustes, pruebas y orientación final.</p>
+      </article>
+      <article class="service-card">
+        <span class="service-icon">🛠️</span>
+        <h4>Solo portón</h4>
+        <p>Servicio para cambio o instalación de la estructura del portón sin incluir motor ni automatización.</p>
+      </article>
+      <article class="service-card">
+        <span class="service-icon">⚙️</span>
+        <h4>Motor</h4>
+        <p>Instalación, reemplazo o ajuste de motores para portones residenciales e industriales.</p>
+      </article>
+      <article class="service-card">
+        <span class="service-icon">🧰</span>
+        <h4>Mantenimiento</h4>
+        <p>Revisión, limpieza, ajuste y corrección de fallas para mantener tu portón funcionando seguro.</p>
+      </article>
+      <article class="service-card">
+        <span class="service-icon">🔩</span>
+        <h4>Instalación de resortes</h4>
+        <p>Colocación y ajuste de resortes para mejorar el equilibrio y la vida útil del portón.</p>
+      </article>
     </div>
   </section>
 
   <section id="contacto" class="contact">
     <div class="section-heading">
-      <h3>Contacto</h3>
-      <p>Cuéntanos qué necesitas y te responderemos a la brevedad.</p>
+      <h3>Agenda tu cita</h3>
+      <p>Completa tus datos y selecciona el servicio que necesitas. No necesitas tener cuenta para solicitar tu cita.</p>
     </div>
     <div class="contact-grid">
       <form id="contactForm" class="contact-form">
+        <label for="service">Servicio</label>
+        <select id="service" name="service" required>
+          <option value="">Selecciona un servicio</option>
+          <option value="Instalación de portón completo">Instalación de portón completo</option>
+          <option value="Solo portón">Solo portón</option>
+          <option value="Motor">Motor</option>
+          <option value="Mantenimiento">Mantenimiento</option>
+          <option value="Instalación de resortes">Instalación de resortes</option>
+        </select>
+
+        <label for="preferredDate">Fecha preferida</label>
+        <input id="preferredDate" name="preferredDate" type="date" required>
+
+        <label for="preferredTime">Hora preferida</label>
+        <input id="preferredTime" name="preferredTime" type="time">
+
         <label for="name">Nombre</label>
         <input id="name" name="name" required>
 
@@ -95,18 +131,21 @@
         <input id="email" name="email" type="email" required>
 
         <label for="phone">Teléfono</label>
-        <input id="phone" name="phone">
+        <input id="phone" name="phone" required>
 
-        <label for="message">Mensaje</label>
-        <textarea id="message" name="message" rows="4" required></textarea>
+        <label for="message">Detalles adicionales</label>
+        <textarea id="message" name="message" rows="4" placeholder="Describe el problema o los detalles de tu proyecto"></textarea>
 
-        <button type="submit" class="btn btn-primary">Enviar mensaje</button>
+        <label for="referenceImage">Foto de referencia (opcional)</label>
+        <input id="referenceImage" name="referenceImage" type="file" accept="image/*">
+
+        <button type="submit" class="btn btn-primary">Solicitar cita</button>
       </form>
       <aside class="contact-info">
         <h4>Información de contacto</h4>
         <p><strong>WhatsApp:</strong> <a href="https://wa.me/526671034487" target="_blank" rel="noopener">+52 667 103 4487</a></p>
         <p><strong>Email:</strong> <a href="mailto:contacto@portones.com">contacto@portones.com</a></p>
-        <p>Respondemos en cualquier momento lunes a domingo</p>
+        <p>Atención rápida lunes a domingo para ayudarte con tu cita o requerimiento técnico.</p>
       </aside>
     </div>
   </section>

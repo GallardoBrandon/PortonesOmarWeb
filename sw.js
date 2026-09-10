@@ -1,5 +1,5 @@
 // Service worker: habilita instalación como PWA y navegación básica offline.
-const CACHE_NAME = 'portones-cache-v7';
+const CACHE_NAME = 'portones-cache-v8';
 const APP_SHELL = [
   '/',
   '/index.html',
@@ -52,8 +52,17 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Archivos estáticos: caché primero, red como respaldo
+  // Archivos estáticos: red primero para reflejar cambios recientes,
+  // con caché como respaldo cuando no haya conexión.
   event.respondWith(
-    caches.match(request).then((cached) => cached || fetch(request))
+    fetch(request)
+      .then((response) => {
+        if (response.ok) {
+          const clone = response.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(request, clone));
+        }
+        return response;
+      })
+      .catch(() => caches.match(request))
   );
 });
